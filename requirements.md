@@ -17,6 +17,7 @@ Analise de Dados de Manutencao - Frota Municipal/
 │   └── analise_manutencao_veiculos.ipynb
 ├── output/                      # Dados consolidados e limpos exportados
 ├── src/                         # Código-fonte modularizado
+│   ├── app.py                   # 
 │   ├── config.py                # Configurações globais e mapeamento de caminhos
 │   ├── etl.py                   # Script principal de Extração, Transformação e Carga
 │   └── quarentena.py            # Regras e isolamento de dados inconsistentes
@@ -98,3 +99,16 @@ O ecossistema possui três módulos principais (`src/`) totalmente operacionais,
     * [ ] Mapa do Ceará interativo colorido pelo volume total de gastos com manutenção em 2025.
     * [ ] Barra de pesquisa/seleção de município para detalhamento automático (filtros reativos).
     * [ ] Exibição automática do Top Prestador do município selecionado (ex: evidenciando casos de concentração como a *7SERV* em Caucaia).
+
+### 5.3. Camada de Geolocalização Regional (Ceará)
+* **Fonte do GeoJSON:** Repositório `tbrugz/geodata-br` (Malha municipal do Ceará - ID de 6 dígitos).
+* **URL Raw:** `https://raw.githubusercontent.com/tbrugz/geodata-br/master/geojson/geojs-23-mun.json`
+* **Mecanismo Visual:** `px.choropleth` do Plotly integrado ao layout principal do Streamlit.
+* **Critério de Match:** Mapeamento da propriedade `id` do GeoJSON com a coluna `codigo_municipio_ibge_6` gerada no pipeline ETL do TCE-CE.
+
+### 5.4. Expansão Gráfica do Dashboard
+* [ ] Integrar gráfico de Situação Real da Frota na interface.
+* [ ] Integrar Boxplot de Distribuição de Idade por Vínculo.
+* [ ] Integrar Ranking do Top 20 Municípios com maiores gastos.
+* [ ] Integrar Scatter Plot do modelo preditivo de Outliers Críticos (Seção 4.2).
+* [ ] Organizar o layout em Abas (`st.tabs`) para melhor usabilidade e experiência do usuário.
