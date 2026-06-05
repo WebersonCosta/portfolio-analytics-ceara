@@ -100,7 +100,9 @@ Para rodar e testar o projeto na sua máquina local, siga os passos abaixo:
    No PowerShell:
    ```powershell
    python -m venv venv
-   .\venv\Scripts\Activate.ps1
+   ```
+   ```powershell
+   venv\Scripts\Activate
    ```
 
 3. **Instalar Dependências:**
@@ -120,7 +122,7 @@ Para rodar e testar o projeto na sua máquina local, siga os passos abaixo:
 5. **Executar o Dashboard Streamlit:**
    Execute o comando abaixo para iniciar o servidor web de desenvolvimento local:
    ```bash
-   streamlit run src/app.py
+   python -m streamlit run src/app.py
    ```
    
    Após a inicialização, o Streamlit abrirá automaticamente uma janela em seu navegador padrão no endereço `http://localhost:8501`.

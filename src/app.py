@@ -288,7 +288,24 @@ if data_loaded_successfully:
                 st.info("Nenhum veículo cadastrado disponível para este município.")
                 
         with col_f2:
-            st.markdown("#### Distribuição de Idade dos Veículos por Tipo de Vínculo")
+            # O argumento 'help' adiciona o ícone de informação reativo com o hover do mouse
+            st.markdown(
+                "#### Distribuição de Idade dos Veículos por Tipo de Vínculo",
+help="""
+💡 **Como ler este gráfico (Boxplot):**
+
+O Boxplot mostra a dispersão e a idade da frota do município:
+* **Linha Central da Caixa:** É a Mediana. Metade da frota está acima dessa 
+idade, metade está abaixo.
+* **A Caixa Colorida:** Concentra os 50% dos veículos mais comuns da frota.
+* **Linhas Horizontais Extremas (Bigodes):** Representam a idade mínima e 
+máxima da frota dentro do padrão normal.
+* **Pontos Isolados (Outliers):** Veículos que estão fora da curva 
+(ex: um carro de 20 anos em uma frota que tem média de 4 anos). 
+Indica frotas possivelmente defasadas.
+"""
+)
+            
             if not df_veiculos_filtrado.empty:
                 df_veiculos_filtrado_copy = df_veiculos_filtrado.copy()
                 df_veiculos_filtrado_copy['vínculo_descr'] = df_veiculos_filtrado_copy['tp_vinculacao_vm'].map(TIPO_VINCULACAO).fillna(df_veiculos_filtrado_copy['tp_vinculacao_vm'])
@@ -305,6 +322,173 @@ if data_loaded_successfully:
                 st.plotly_chart(fig_idade, use_container_width=True)
             else:
                 st.info("Nenhum veículo cadastrado disponível para este município.")
+
+        # ── 🔎 INVESIGAÇÃO DETALHADA (Aparece apenas se um município for selecionado) ──
+        if opcao_municipio != "Todos os Municípios":
+            st.markdown("---")
+            st.markdown(f"### 🔎 Investigação Detalhada da Frota: {opcao_municipio}")
+            st.markdown("Métricas focadas na identificação de veículos e prestadores locais com maior acúmulo de despesas.")
+
+            if not df_manut_filtrado.empty:
+                # Criamos uma cópia segura dos dados já filtrados do município
+                manut_mun = df_manut_filtrado.copy()
+                
+                # Garante que temos placa, marca e modelo fazendo o merge com o cadastro de veículos
+                colunas_veiculos = ['cd_renavam_vm', 'cd_placa_vm', 'de_marca_vm', 'de_modelo_versao_vm']
+                colunas_existentes_vei = [c for c in colunas_veiculos if c in df_veiculos.columns]
+                
+                # Remove duplicadas do cadastro de veículos pelo renavam antes de cruzar
+                df_vei_lookup = df_veiculos[colunas_existentes_vei].drop_duplicates('cd_renavam_vm')
+                
+                # Remove colunas duplicadas da base de manutenção se já existirem antes do merge
+                colunas_para_dropar = [c for c in ['cd_placa_vm', 'de_marca_vm', 'de_modelo_versao_vm'] if c in manut_mun.columns]
+                if colunas_para_dropar:
+                    manut_mun = manut_mun.drop(columns=colunas_para_dropar)
+                
+                manut_mun = manut_mun.merge(df_vei_lookup, on='cd_renavam_vm', how='left')
+
+                # Cria duas colunas paralelas no Streamlit para colocar as análises lado a lado
+                col_inv1, col_inv2 = st.columns(2)
+
+                with col_inv1:
+                    st.markdown("#### 🚗 Veículos 'Campeões' de Gasto (Top 5)")
+                    
+                    # Agrupa trazendo Placa, Marca e Modelo para o resultado final
+                    top_gastadores = (
+                        manut_mun.groupby(['cd_placa_vm', 'de_marca_vm', 'de_modelo_versao_vm'])['vl_total_servicos_vma']
+                        .agg(total_gasto='sum', qtd_ordens='count')
+                        .sort_values('total_gasto', ascending=False)
+                        .head(5)
+                        .reset_index()
+                    )
+
+                    if not top_gastadores.empty:
+                        st.dataframe(
+                            top_gastadores,
+                            column_config={
+                                "cd_placa_vm": "Placa",
+                                "de_marca_vm": "Marca",
+                                "de_modelo_versao_vm": "Modelo",
+                                "total_gasto": st.column_config.NumberColumn("Total Gasto", format="R$ %,.2f"),
+                                "qtd_ordens": st.column_config.NumberColumn("Qtd OS", format="%d")
+                            },
+                            hide_index=True,
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("Sem dados suficientes para mapear os veículos.")
+
+                with col_inv2:
+                    st.markdown("#### 🛠️ Prestadores que mais faturaram no município (Top 5)")
+                    
+                    top_prestadores = (
+                        manut_mun.groupby('nm_razao_prest_norm')['vl_total_servicos_vma']
+                        .agg(total_faturado='sum', qtd_ordens='count')
+                        .sort_values('total_faturado', ascending=False)
+                        .head(5)
+                        .reset_index()
+                    )
+
+                    if not top_prestadores.empty:
+                        st.dataframe(
+                            top_prestadores,
+                            column_config={
+                                "nm_razao_prest_norm": "Razão Social do Prestador",
+                                "total_faturado": st.column_config.NumberColumn("Total Faturado", format="R$ %,.2f"),
+                                "qtd_ordens": st.column_config.NumberColumn("Qtd OS", format="%d")
+                            },
+                            hide_index=True,
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("Sem dados suficientes para mapear os prestadores.")
+            else:
+                st.info("Nenhum dado de manutenção registrado para este município.")
+
+        # ── 🔎 INVESTIGAÇÃO DETALHADA (Adicionando a análise orçamentária do Professor) ──
+        if opcao_municipio != "Todos os Municípios":
+            st.markdown("---")
+            st.markdown(f"### 📊 Impacto Orçamentário por Secretaria: {opcao_municipio} (2025)")
+            st.write("Esta análise cruza o gasto real de manutenção com o orçamento total fixado para cada órgão na LOA via API do TCE-CE.")
+
+            # 1. Descobrir o código do município atual para consultar a API
+            # Presumindo que df_manut_filtrado tem a coluna 'cd_municipio'
+            if not df_manut_filtrado.empty:
+                cd_mun_api = str(df_manut_filtrado['cd_municipio'].iloc[0]).zfill(3)
+                
+                # Consome a API do TCE-CE em tempo de execução usando um cache para não estressar a API
+                @st.cache_data(ttl=3600)
+                def carregar_orcamento_tce(codigo_municipio):
+                    import requests
+                    url = f"https://api-dados-abertos.tce.ce.gov.br/sim/orcamento_despesa?codigo_municipio={codigo_municipio}&exercicio_orcamento=202500"
+                    try:
+                        response = requests.get(url, timeout=10)
+                        if response.status_code == 200:
+                            dados = response.json()
+                            if "elements" in dados and dados["elements"]:
+                                return pd.DataFrame(dados["elements"])
+                    except Exception as e:
+                        pass
+                    return pd.DataFrame()
+
+                df_orc_api = carregar_orcamento_tce(cd_mun_api)
+
+                if not df_orc_api.empty:
+                    # 2. Processa o Orçamento Total Fixado por Órgão (Secretaria)
+                    # Força o código do órgão a ser string e limpa espaços para o merge bater correto
+                    df_orc_api['codigo_orgao'] = df_orc_api['codigo_orgao'].astype(str).str.strip().str.zfill(2)
+                    
+                    # Agrupa o orçamento total fixado da secretaria (soma todos os elementos de despesa dela)
+                    df_orc_agrupado = (
+                        df_orc_api.groupby('codigo_orgao')['valor_total_fixado']
+                        .sum()
+                        .reset_index()
+                        .rename(columns={'valor_total_fixado': 'Orcamento_Total_Fixado'})
+                    )
+
+                    # 3. Processa o Gasto de Manutenção Atual do Município por Órgão
+                    manut_mun = df_manut_filtrado.copy()
+                    manut_mun['cd_orgao'] = manut_mun['cd_orgao'].astype(str).str.strip().str.zfill(2)
+                    
+                    df_manut_orgao = (
+                        manut_mun.groupby(['cd_orgao', 'nm_orgao'])['vl_total_servicos_vma']
+                        .sum()
+                        .reset_index()
+                        .rename(columns={'vl_total_servicos_vma': 'Gasto_Manutencao'})
+                    )
+
+                    # 4. Realiza o Cruzamento (Merge) das Duas Realidades
+                    df_impacto = pd.merge(
+                        df_manut_orgao,
+                        df_orc_agrupado,
+                        left_on='cd_orgao',
+                        right_on='codigo_orgao',
+                        how='inner'
+                    )
+
+                    # 5. Calcula a Métrica solicitada pelo seu professor
+                    df_impacto['%_Gasto_Manutencao'] = (df_impacto['Gasto_Manutencao'] / df_impacto['Orcamento_Total_Fixado']) * 100
+                    
+                    # Ordena pelas secretarias onde a manutenção engoliu a maior fatia do orçamento
+                    df_impacto = df_impacto.sort_values(by='%_Gasto_Manutencao', ascending=False)
+
+                    # 6. Renderiza na Interface do Streamlit
+                    st.dataframe(
+                        df_impacto,
+                        column_config={
+                            "cd_orgao": "Cód.",
+                            "nm_orgao": "Secretaria / Órgão",
+                            "Gasto_Manutencao": st.column_config.NumberColumn("Gasto Manutenção", format="R$ %,.2f"),
+                            "Orcamento_Total_Fixado": st.column_config.NumberColumn("Orçamento Total Fixado", format="R$ %,.2f"),
+                            "%_Gasto_Manutencao": st.column_config.NumberColumn("% do Orçamento Consumido", format="%.2f %%"),
+                        },
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                else:
+                    st.warning("⚠️ Não foi possível extrair os dados de orçamento deste município na API do TCE-CE para o exercício de 2025.")
+            else:
+                st.info("Sem dados de manutenção para mapear o orçamento municipal.")
 
     # ── TAB 2: Análise de Gastos e Prestadores ────────────────────────────────
     with tab2:
@@ -411,7 +595,25 @@ if data_loaded_successfully:
 
     # ── TAB 3: Modelos Antifraude & Quarentena ────────────────────────────────
     with tab3:
-        st.markdown("### 🔎 Detecção de Outliers Críticos (Isolation Forest + IQR + Z-Score)")
+        st.markdown("### 🔎 Detecção de Outliers Críticos (Isolation Forest + IQR + Z-Score)",
+help="""
+🤖 **Engenharia de Triagem Antifraude (Como os Modelos Avaliam a Variável**
+
+O sistema avalia individualmente o valor de cada Ordem de Serviço usando três camadas independentes de validação matemática:
+
+1. **Isolation Forest:** O algoritmo de Machine Learning analisa a distribuição do valor total de serviço. Ele tenta isolar cada ponto criando partições aleatórias. Notas com valores muito atípicos são isoladas rapidamente nas primeiras quebras da árvore, recebendo o rótulo `-1`, o que ativa a nossa flag como verdadeira.
+
+2. **Amplitude Interquartil:** Modelo estatístico focado no corpo da distribuição. O código calcula os limites dos dados normais:
+* `q1` (25% das OSs mais baratas) e `q3` (75% das OSs mais baratas).
+* A diferença cria a amplitude `iqr = q3 - q1`.
+* O limite de normalidade é definido pelo limite superior iqr = q3 + (1.5 * iqr)`. Qualquer ordem de serviço cujo valor ultrapasse essa barreira ativa a flag de outlier.
+
+3. **Z-Score Estatístico:** Mede a quantos desvios padrões o valor da OS está afastado da média do município. O cálculo subtrai a média do valor e divide pelo desvio padrão. Se o resultado absoluto for maior que o nosso limiar LIMIAR_ZSCORE = 3.0, significa que a despesa está em uma zona de raridade estatística extrema (ocorre em menos de 1% dos casos).
+
+🎯 **Score de Suspeição (`score_suspeicao`):** O pipeline converte as 3 flags booleanas em inteiros (`0` ou `1`) e realiza o somatório das três camadas. 
+* **Score 1 ou 2:** Alerta moderado (a nota falhou em uma ou duas regras).
+* **Score 3:** Alerta Máximo Crítico. Significa que a Ordem de Serviço foi considerada uma anomalia grave simultaneamente pelo algoritmo de IA, pelo cálculo de quartis (IQR) e pelo desvio padrão (Z-Score). Essas são as bolhas maiores e mais escuras no topo do gráfico.
+""")
         if not df_manut_filtrado.empty and 'score_suspeicao' in df_manut_filtrado.columns:
             df_plot_outliers = df_manut_filtrado.sort_values(by='vl_total_servicos_vma', ascending=False).head(500)
             
@@ -439,7 +641,160 @@ if data_loaded_successfully:
                 st.metric("Outliers Z-Score (Limiar 3.0)", f"{df_manut_filtrado['is_outlier_zscore'].sum()} OS")
         else:
             st.info("Nenhum dado de manutenção ou score de suspeição disponível para este município.")
-            
+
+        # ── 🚨 CONDICIONAL EXCLUSIVA PARA O PANORAMA ESTADUAL ──────────────────
+        if opcao_municipio == "Todos os Municípios":
+            st.markdown("---")
+            st.markdown("### 🏎️ Ranking de Custo Médio de Manutenção (R$ por Veículo)")
+            if not df_manut_filtrado.empty and not df_veiculos_filtrado.empty:
+                frota_por_municipio = df_veiculos_filtrado.groupby('nm_municipio')['cd_renavam_vm'].nunique()
+                custo_por_municipio = df_manut_filtrado.groupby('nm_municipio')['vl_total_servicos_vma'].sum()
+                ranking_series = (custo_por_municipio / frota_por_municipio).sort_values(ascending=False).dropna()
+
+                df_custo_medio = ranking_series.reset_index()
+                df_custo_medio.columns = ['nm_municipio', 'custo_medio_por_veiculo']
+                df_top_10_medio = df_custo_medio.head(10)
+
+                fig_custo_medio = px.bar(
+                    df_top_10_medio,
+                    x='nm_municipio',
+                    y='custo_medio_por_veiculo',
+                    title='Top 10 Municípios - Maior Custo Médio de Manutenção (R$ por veículo)',
+                    labels={'nm_municipio': 'Município', 'custo_medio_por_veiculo': 'Custo Médio (R$/Veículo)'},
+                    color='custo_medio_por_veiculo',
+                    color_continuous_scale='YlOrRd',
+                    text_auto='R$,.2f'
+                )
+                fig_custo_medio.update_layout(xaxis_tickangle=-45, template='plotly_white', yaxis_tickformat="R$,.2f", height=450, showlegend=False)
+                st.plotly_chart(fig_custo_medio, use_container_width=True)
+            else:
+                st.info("Dados insuficientes para calcular o custo médio por veículo.")
+
+            st.markdown("---")
+            st.markdown("### 🔍 Matriz de Contexto e Avaliação de Anomalias (Z-Score)")
+            st.write("Esta tabela analisa o comportamento de cada município em relação à média de custo por veículo de todo o Estado do Ceará.")
+
+            if not df_manut_filtrado.empty and not df_veiculos_filtrado.empty:
+                frota_por_municipio = df_veiculos_filtrado.groupby('nm_municipio')['cd_renavam_vm'].nunique()
+                custo_por_municipio = df_manut_filtrado.groupby('nm_municipio')['vl_total_servicos_vma'].sum()
+                ranking_custo_medio = (custo_por_municipio / frota_por_municipio).dropna()
+
+                df_contexto = pd.DataFrame({
+                    'Custo Total (R$)': custo_por_municipio,
+                    'Qtd Frota': frota_por_municipio,
+                    'Custo Médio (R$/Veículo)': ranking_custo_medio
+                })
+
+                custo_estado = df_manut_filtrado['vl_total_servicos_vma'].sum()
+                df_contexto['% do Custo Estado'] = (df_contexto['Custo Total (R$)'] / custo_estado * 100) if custo_estado > 0 else 0.0
+
+                media_estado = df_contexto['Custo Médio (R$/Veículo)'].mean()
+                desvio_estado = df_contexto['Custo Médio (R$/Veículo)'].std()
+                df_contexto['Z-Score'] = (df_contexto['Custo Médio (R$/Veículo)'] - media_estado) / desvio_estado if desvio_estado > 0 else 0.0
+
+                def classifica_anomalia(z):
+                    if z > 3: return '🚨 Crítico (Anomalia Extrema)'
+                    if z > 2: return '⚠️ Alerta (Outlier)'
+                    if z > 1: return '🧐 Suspeito'
+                    return '✅ Normal'
+
+                df_contexto['Avaliação'] = df_contexto['Z-Score'].apply(classifica_anomalia)
+                df_contexto = df_contexto.sort_values('Custo Médio (R$/Veículo)', ascending=False).reset_index()
+
+                st.dataframe(
+                    df_contexto,
+                    column_config={
+                        "nm_municipio": "Município",
+                        "Custo Total (R$)": st.column_config.NumberColumn("Custo Total", format="R$ %,.2f"),
+                        "Qtd Frota": st.column_config.NumberColumn("Qtd Frota", format="%d"),
+                        "Custo Médio (R$/Veículo)": st.column_config.NumberColumn("Custo Médio/Veículo", format="R$ %,.2f"),
+                        "% do Custo Estado": st.column_config.NumberColumn("% Gasto Estado", format="%.2f %%"),
+                        "Z-Score": st.column_config.NumberColumn("Z-Score", format="%.2f"),
+                        "Avaliação": "Avaliação Estatística"
+                    },
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+                st.markdown("---")
+                st.markdown("### 🗺️ Visão Espacial: Frota vs. Custo Total de Manutenção",
+help="""
+📊 **Como interpretar esta Análise Multidimensional (Bubble Chart):**
+
+Este gráfico cruza três variáveis simultaneamente para identificar visualmente a eficiência do gasto de cada município:
+
+* **Eixo X (`Qtd Frota`):** Mostra o tamanho da frota do município (quantidade de veículos únicos).
+* **Eixo Y (`Custo Total (R$)`):** Mostra o volume financeiro bruto gasto em manutenção.
+* **Tamanho da Bolha (`Custo Médio (R$/Veículo)`):** Quanto maior o diâmetro da esfera, maior é o custo médio pago para manter cada veículo individual daquela cidade.
+* **Cores (Z-Score):** Refletem a gravidade do desvio padrão calculado na Matriz de Contexto.
+
+🧐 **Como caçar anomalias neste gráfico?**
+* **O Padrão Esperado:** Municípios deveriam formar uma linha diagonal ascendente regular. Quanto maior a frota (X), maior o custo total (Y), mantendo bolhas de tamanhos proporcionais.
+* **O Alvo da Auditoria (Anomalias):** Procure por esferas que fujam da linha de tendência. Por exemplo, uma bolha gigante vermelha (`🚨 Crítico`) posicionada muito à esquerda (pouca frota) e muito no topo (gasto total altíssimo) denota um desvio severo de mercado que exige auditoria imediata de contratos.
+""")
+                
+                # Mapeamento de cores idêntico ao da tabela para consistência visual
+                mapa_cores_bubble = {
+                    '🚨 Crítico (Anomalia Extrema)': '#d9534f',
+                    '⚠️ Alerta (Outlier)': '#f0ad4e',
+                    '🧐 Suspeito': '#5bc0de',
+                    '✅ Normal': '#5cb85c'
+                }
+
+                df_bubble = df_contexto.dropna(subset=['Custo Médio (R$/Veículo)', 'Qtd Frota', 'Custo Total (R$)'])
+
+                fig2 = px.scatter(
+                    df_bubble, 
+                    x='Qtd Frota',
+                    y='Custo Total (R$)',
+                    size='Custo Médio (R$/Veículo)',
+                    color='Avaliação',
+                    color_discrete_map=mapa_cores_bubble,
+                    text='nm_municipio',
+                    title='Dispersão: Frota vs. Custo Total de Manutenção por Município',
+                    labels={
+                        'Qtd Frota': 'Tamanho da Frota (veículos)',
+                        'Custo Total (R$)': 'Custo Total de Manutenção (R$)',
+                        'nm_municipio': 'Município',
+                        'Avaliação': 'Avaliação Estatística'
+                    },
+                    custom_data=['Custo Médio (R$/Veículo)', 'Z-Score', 'Avaliação']
+                )
+
+                fig2.update_traces(
+                    textposition='top center',
+                    textfont=dict(size=9),
+                    hovertemplate=(
+                        '<b>%{text}</b><br>'
+                        'Frota: %{x} veículos<br>'
+                        'Custo Total: R$ %{y:,.2f}<br>'
+                        'Custo Médio: R$ %{customdata[0]:,.2f}<br>'
+                        'Z-Score: %{customdata[1]:.2f}<br>'
+                        'Avaliação: %{customdata[2]}'
+                        '<extra></extra>'
+                    )
+                )
+
+                fig2.update_layout(
+                    height=600,
+                    plot_bgcolor='white',
+                    yaxis=dict(showgrid=True, gridcolor='#eeeeee', tickprefix='R$ ', tickformat=',.0f'),
+                    xaxis=dict(showgrid=True, gridcolor='#eeeeee'),
+                    legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+                )
+                
+                st.plotly_chart(fig2, use_container_width=True)
+
+            else:
+                st.info("Dados insuficientes para gerar o gráfico de dispersão espacial.")
+        
+        else:
+            # Feedback visual se um município específico for selecionado
+            st.markdown("---")
+            st.info(f"💡 As análises macroestatísticas do Estado (Custo Médio, Matriz Z-Score e Dispersão Frota vs Gasto) ficam ocultas quando um município individual é selecionado.")
+
+        # ── Triagem e Retenção Financeira ─────────────────────────────────────
+        st.markdown("---")
         st.markdown("### 📥 Triagem e Retenção Financeira")
         col_t3_l, col_t3_r = st.columns([1.2, 1])
         
