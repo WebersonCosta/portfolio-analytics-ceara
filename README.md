@@ -53,6 +53,7 @@ Analise de Dados de Manutencao - Frota Municipal/
 ### 3. Integração com APIs Governamentais
 - **DE-PARA IBGE (TCE-CE):** Consumo dinâmico da API aberta do Tribunal de Contas do Estado do Ceará (`https://api-dados-abertos.tce.ce.gov.br/sim/municipios`) para converter o código interno de 3 dígitos das cidades no código oficial do IBGE de 6 e 7 dígitos.
 - **Resiliência e Timeout:** Tratamento rigoroso de exceções e timeouts de rede para assegurar a continuidade do pipeline mesmo em caso de instabilidade dos servidores do TCE.
+- **Orçamento de Despesa por Órgão (TCE-CE):** Integração em tempo de execução com o endpoint `/orcamento_despesa` utilizando o sufixo temporal de exercício `202500` para extrair o orçamento total fixado na LOA para cada Secretaria/Órgão.
 
 ### 4. Modelos Antifraude (Detecção de Outliers)
 - **Isolation Forest (Machine Learning):** Algoritmo não-supervisionado treinado nas ordens de serviço válidas usando o limiar de contaminação definido centralizadamente em `config.py`.
@@ -62,11 +63,13 @@ Analise de Dados de Manutencao - Frota Municipal/
 
 ## 🖥️ Dashboard Streamlit em Abas
 
-O painel central de geolocalização e auditoria é estruturado em **3 abas de navegação** alimentadas de forma reativa de acordo com a seleção de filtros na barra lateral:
+O painel central de geolocalização e auditoria é estruturado em **3 abas de navegação** alimentadas de forma reativa e contextual:
 
 ### Tab 1: Perfil da Frota
 - **Situação Real da Frota:** Gráfico de barras (`plotly_express`) demonstrando a distribuição ativa por finalidade do veículo.
-- **Distribuição de Idade por Vínculo:** Gráfico Boxplot interativo comparando a idade média e a dispersão dos veículos próprios, locados e cedidos.
+- **Distribuição de Idade por Vínculo:** Gráfico Boxplot interativo comparando a idade e a dispersão dos veículos com Tooltip explicativo de alfabetização de dados estatísticos (Data Literacy).
+- **🔎 Investigação Detalhada do Município (Modo Individual):** Módulo reativo ativado apenas quando uma cidade específica é selecionada, revelando o Top 5 Veículos "Campeões de Gasto" (Placa, Marca e Modelo, omitindo o hash do Renavam) e o Top 5 Prestadores Locais.
+- **📊 Impacto Orçamentário por Secretaria (Modo Individual):** Tabela dinâmica que consome a API do TCE-CE ao vivo e calcula o `%_Gasto_Manutencao` em relação ao orçamento total fixado daquela pasta, denunciando quais secretarias tiveram o orçamento "engolido" pela frota.
 
 ### Tab 2: Análise de Gastos e Prestadores
 - **Top 10 Prestadores de Serviço:** Gráfico de barras horizontal demonstrando quais empresas centralizam os maiores aportes financeiros.
@@ -75,9 +78,11 @@ O painel central de geolocalização e auditoria é estruturado em **3 abas de n
 - **Dados de Geolocalização (IBGE):** Visualização do De-Para oficial com o IBGE obtido da API do TCE-CE.
 
 ### Tab 3: Modelos Antifraude & Quarentena
-- **Detecção de Outliers Financeiros:** Gráfico de dispersão interativo contendo as 500 Ordens de Serviço mais suspeitas de acordo com o cruzamento dos modelos Isolation Forest, Z-Score e IQR.
-- **Rosca de Retenção da Quarentena:** Gráfico de rosca dinâmico com o total de recursos retidos na triagem orçamentária e uma tabela detalhada com as notas de empenho críticas para auditoria prioritária em campo.
-
+- **Detecção de Outliers Financeiros:** Gráfico de dispersão interativo contendo as 500 Ordens de Serviço mais suspeitas (Isolation Forest, Z-Score e IQR) com Tooltip técnico integrado.
+- **🏎️ Ranking de Custo Médio por Veículo (Modo Macro/Todos):** Indicador de eficiência que divide o custo total pela frota real de veículos únicos de cada cidade.
+- **🔍 Matriz de Contexto e Alertas (Modo Macro/Todos):** Tabela analítica contendo o cálculo do Z-Score de custo médio estadual, classificando os municípios em faixas de criticidade (`🚨 Crítico`, `⚠️ Alerta`, `🧐 Suspeito`, `✅ Normal`).
+- **🗺️ Visão Espacial Multidimensional (Modo Macro/Todos):** Gráfico de bolhas (*Bubble Chart*) que cruza o tamanho da Frota (X) vs. Custo Total (Y), usando o diâmetro da bolha para representar o Custo Médio por Veículo e as cores para a classificação do Z-Score.
+- **Rosca de Retenção da Quarentena:** Gráfico de rosca dinâmico com o total de recursos retidos na triagem orçamentária e uma tabela detalhada com as notas de empenho críticas.
 ---
 
 ## 👥 Guia de Replicação para a Equipe (Provisório)
@@ -106,10 +111,9 @@ Para rodar e testar o projeto na sua máquina local, siga os passos abaixo:
    ```
 
 3. **Instalar Dependências:**
-   Instale as bibliotecas necessárias para rodar o pipeline e a interface:
+   Instale todas as bibliotecas necessárias mapeadas no arquivo de manifesto do projeto:
    ```bash
-   pip install pandas numpy scikit-learn streamlit plotly requests
-   ```
+   pip install -r requirements.txt
 
 4. **Verificar os Arquivos de Dados:**
    Certifique-se de que a pasta `dados/` no diretório raiz contém os quatro arquivos originais:
@@ -124,13 +128,10 @@ Para rodar e testar o projeto na sua máquina local, siga os passos abaixo:
    ```bash
    python -m streamlit run src/app.py
    ```
-   
+
    Após a inicialização, o Streamlit abrirá automaticamente uma janela em seu navegador padrão no endereço `http://localhost:8501`.
 
-6. **Validação Rápida de Script:**
-   Caso queira testar apenas o carregamento do pipeline de dados e a geração dos novos campos de anomalia no terminal (sem subir o servidor Streamlit), você pode rodar a validação básica usando:
-   ```bash
-   python -c "import sys; from pathlib import Path; sys.path.insert(0, str(Path('src').resolve())); from app import load_all_data; _, df, _, _, _, _, _, _ = load_all_data(); print('Registros carregados:', len(df)); print('Colunas de outliers calculadas com sucesso!')"
-   ```
+> [!TIP]
+> **Performance de Rede:** A consulta ao orçamento municipal na Tab 1 utiliza a diretiva `@st.cache_data` do Streamlit com tempo de expiração (TTL) de 1 hora. Isso evita requisições redundantes ao servidor do TCE-CE, otimizando o consumo de banda e o tempo de resposta do painel.
 
 ---
