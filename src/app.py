@@ -615,7 +615,20 @@ O sistema avalia individualmente o valor de cada Ordem de Serviço usando três 
 * **Score 3:** Alerta Máximo Crítico. Significa que a Ordem de Serviço foi considerada uma anomalia grave simultaneamente pelo algoritmo de IA, pelo cálculo de quartis (IQR) e pelo desvio padrão (Z-Score). Essas são as bolhas maiores e mais escuras no topo do gráfico.
 """)
         if not df_manut_filtrado.empty and 'score_suspeicao' in df_manut_filtrado.columns:
-            df_plot_outliers = df_manut_filtrado.sort_values(by='vl_total_servicos_vma', ascending=False).head(500)
+            df_plot_outliers = df_manut_filtrado.sort_values(by='vl_total_servicos_vma', ascending=False).head(500).copy()
+            
+            # ── 🔄 FUNÇÃO AUXILIAR PARA QUEBRAR O TEXTO LONGO ──────────────────
+            def quebrar_texto(texto, limite=60):
+                if pd.isna(texto):
+                    return ""
+                texto_str = str(texto)
+                # Divide o texto em blocos de caracteres sem quebrar palavras ao meio
+                import textwrap
+                linhas = textwrap.wrap(texto_str, width=limite)
+                return "<br>".join(linhas)
+
+            # Aplica a quebra de linha na coluna que vai para o gráfico
+            df_plot_outliers['de_servicos_vma_quebrado'] = df_plot_outliers['de_servicos_vma'].apply(quebrar_texto)
             
             fig_outliers = px.scatter(
                 df_plot_outliers,
@@ -625,10 +638,40 @@ O sistema avalia individualmente o valor de cada Ordem de Serviço usando três 
                 size='vl_total_servicos_vma',
                 color_continuous_scale='Reds',
                 title=f'Top {len(df_plot_outliers)} Ordens de Serviço mais Suspeitas - {opcao_municipio}',
-                labels={'dt_ordem_servico_vma': 'Data da OS', 'vl_total_servicos_vma': 'Valor da OS (R$)', 'score_suspeicao': 'Modelos que Retiveram'},
-                hover_data=['nm_municipio', 'nm_razao_prest_norm', 'de_servicos_vma']
+                labels={
+                    'dt_ordem_servico_vma': 'Data da OS', 
+                    'vl_total_servicos_vma': 'Valor da OS (R$)', 
+                    'score_suspeicao': 'Modelos que Retiveram',
+                    'de_servicos_vma_quebrado': 'Descrição dos Serviços' # Label amigável
+                },
+                # Trocamos a coluna original pela coluna com as quebras <br>
+                hover_data={
+                    'nm_municipio': True,
+                    'nm_razao_prest_norm': True,
+                    'de_servicos_vma_quebrado': True,
+                    'vl_total_servicos_vma': ':.2f'
+                }
             )
-            fig_outliers.update_layout(template='plotly_white', yaxis_tickformat="R$,.2f")
+            
+            # ── 📐 AJUSTE DA LARGURA E DESIGN DA CAIXA DE HOVER ────────────────
+            fig_outliers.update_layout(
+                template='plotly_white', 
+                yaxis_tickformat="R$,.2f",
+                hoverlabel=dict(
+                    font_size=12,
+                    font_family="Arial",
+                    # namelength=-1 garante que o nome da variável não seja cortado
+                    namelength=-1 
+                )
+            )
+            
+            # Força a largura máxima do bloco de hover para evitar estouros visuais
+            fig_outliers.update_traces(
+                hoverlabel=dict(
+                    align="left"
+                )
+            )
+            
             st.plotly_chart(fig_outliers, use_container_width=True)
             
             # Volumetria na interface
