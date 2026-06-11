@@ -197,7 +197,7 @@ if data_loaded_successfully:
             locations="codigo_municipio_ibge_6",
             color="total_gasto",
             color_continuous_scale="Reds",
-            labels={"total_gasto": "Total Gasto (R$)", "codigo_municipio_ibge_6": "Código IBGE"},
+            labels={"total_gasto": "Total Gasto (R$)"},
             hover_name="nm_municipio",
             hover_data={"total_gasto": ":,.2f"}
         )
@@ -490,8 +490,86 @@ Indica frotas possivelmente defasadas.
             else:
                 st.info("Sem dados de manutenção para mapear o orçamento municipal.")
 
-    # ── TAB 2: Análise de Gastos e Prestadores ────────────────────────────────
+    # ── TAB 2: Análise de Gastos e Viabilidade de Frota ───────────────────────
     with tab2:
+        # Cálculo global e seguro do total de OS para evitar NameError nas métricas abaixo
+        total_os_filtrado = len(df_manut_filtrado) if not df_manut_filtrado.empty else 0
+
+        st.markdown("### ⚖️ Viabilidade Financeira: Custo de Manutenção por Tipo de Vínculo")
+        st.write(
+            "Esta análise fornece subsídios estratégicos para a tomada de decisão de gastos públicos, "
+            "comparando o custo médio anual de manutenção por veículo entre frotas Próprias e Locadas."
+        )
+
+        if not df_manut_filtrado.empty and not df_veiculos_filtrado.empty:
+            # Base de frota em operação
+            df_frota_ativos = df_veiculos_filtrado[df_veiculos_filtrado['situacao_real'] == 'Em Operação']
+            
+            # --- PROCESSAMENTO: FROTA PRÓPRIA ---
+            qtd_p = df_frota_ativos[df_frota_ativos['tp_vinculacao_vm'] == 'p']['cd_renavam_vm'].nunique()
+            total_p = df_manut_filtrado[df_manut_filtrado['tp_vinculacao_vm'] == 'p']['vl_total_servicos_vma'].sum()
+            custo_p = total_p / qtd_p if qtd_p > 0 else 0.0
+            
+            # --- PROCESSAMENTO: FROTA LOCADA (A GRANDE CORREÇÃO COBERTA POR CONTRATO) ---
+            # Filtramos apenas a quantidade de veículos locados onde a manutenção NÃO está inclusa no contrato (gasto direto da prefeitura)
+            qtd_l = df_frota_ativos[
+                (df_frota_ativos['tp_vinculacao_vm'] == 'l') & 
+                (df_frota_ativos['loc_manut_inclusa'] == False)
+            ]['cd_renavam_vm'].nunique()
+            
+            # Filtramos as despesas de manutenção geradas apenas por veículos locados sem cobertura
+            total_l = df_manut_filtrado[
+                (df_manut_filtrado['tp_vinculacao_vm'] == 'l') & 
+                (df_manut_filtrado['loc_manut_inclusa'] == False)
+            ]['vl_total_servicos_vma'].sum()
+            
+            custo_l = total_l / qtd_l if qtd_l > 0 else 0.0
+            
+            # ── 📐 RENDERIZAÇÃO DOS BLOCOS VISUAIS COMPARATIVOS (MÉTRICAS) ──
+            c_prop, c_loc = st.columns(2)
+            
+            with c_prop:
+                st.info("🏢 MODELO: FROTA PRÓPRIA")
+                if qtd_p > 0:
+                    st.metric("Custo Médio de Manutenção / Veículo", f"R$ {custo_p:,.2f}")
+                    st.caption(f"**Frota Ativa s/ Contrato:** {qtd_p} veículos | **Gasto Oficinas:** R$ {total_p:,.2f}")
+                else:
+                    st.metric("Custo Médio de Manutenção / Veículo", "R$ 0,00")
+                    st.caption("Nenhum veículo próprio ativo identificado nesta seleção.")
+                    
+            with c_loc:
+                st.warning("🚗 MODELO: FROTA LOCADA")
+                if qtd_l > 0:
+                    st.metric("Custo Médio de Manutenção / Veículo", f"R$ {custo_l:,.2f}")
+                    st.caption(f"**Frota Ativa s/ Contrato:** {qtd_l} veículos | **Gasto Oficinas:** R$ {total_l:,.2f}")
+                else:
+                    st.metric("Custo Médio de Manutenção / Veículo", "R$ 0,00")
+                    st.caption("Nenhum veículo locado ativo sem cobertura de manutenção nesta seleção.")
+
+            # ── 💡 INSIGHT LOGÍSTICO PARA O GESTOR MUNICIPAL ──────────────────
+            dif_custo = custo_p - custo_l
+            
+            st.markdown("#### 🧠 Indicador de Suporte à Decisão")
+            if dif_custo > 0:
+                st.write(
+                    f"No cenário selecionado, manter um veículo de **Frota Própria** custa em média "
+                    f"**R$ {dif_custo:,.2f} a mais** em manutenção por ano do que um veículo **Locado** (considerando apenas contratos sem cobertura de oficina). "
+                    f"Esse indicador sugere que, mesmo quando o município assume a manutenção da frota locada, a menor idade média dos veículos "
+                    f"tende a gerar despesas de oficina mais eficientes do que o modelo de frota própria."
+                )
+            else:
+                st.write(
+                    f"No cenário selecionado, o modelo de **Frota Locada** (sem cobertura de oficina) gerou um custo médio de manutenção de "
+                    f"**R$ {abs(dif_custo):,.2f} a mais** por veículo no ano em relação à frota própria. "
+                    f"Este dado indica que, para este recorte, a terceirização sem manutenção inclusa pode estar sobrecarregando as finanças locais "
+                    f"em oficinas mecânicas contratadas."
+                )
+        else:
+            st.info("Dados insuficientes para calcular a viabilidade de custos por tipo de vínculo.")
+            
+        st.markdown("---")
+        
+        # ── 🏆 TOP 10 PRESTADORES DE SERVIÇO ─────────────────────────────────
         st.markdown("### 🏆 Top 10 Prestadores de Serviço")
         if not df_manut_filtrado.empty:
             df_prest = (
@@ -523,39 +601,45 @@ Indica frotas possivelmente defasadas.
         else:
             st.info("Nenhum dado de manutenção disponível para este município.")
             
-        st.markdown("### 📊 Top 20 Municípios por Volume de Gastos")
-        if not df_manut_filtrado.empty:
-            gastos_por_municipio = (
-                df_manut_filtrado.groupby(['cd_municipio', 'nm_municipio'])
-                .agg(
-                    total_gasto=('vl_total_servicos_vma', 'sum'),
-                    qtd_manutencoes=('nu_ordem_servico_vma', 'count'),
-                    ticket_medio=('vl_total_servicos_vma', 'mean')
+        # ── 📊 TOP 20 MUNICÍPIOS POR VOLUME DE GASTOS (Condicional de Contexto) ─
+        if opcao_municipio == "Todos os Municípios":
+            st.markdown("---")
+            st.markdown("### 📊 Top 20 Municípios por Volume de Gastos")
+            if not df_manut_filtrado.empty:
+                gastos_por_municipio = (
+                    df_manut_filtrado.groupby(['cd_municipio', 'nm_municipio'])
+                    .agg(
+                        total_gasto=('vl_total_servicos_vma', 'sum'),
+                        qtd_manutencoes=('nu_ordem_servico_vma', 'count'),
+                        ticket_medio=('vl_total_servicos_vma', 'mean')
+                    )
+                    .reset_index()
+                    .sort_values(by='total_gasto', ascending=False)
                 )
-                .reset_index()
-                .sort_values(by='total_gasto', ascending=False)
-            )
-            
-            fig_gastos_mun = px.bar(
-                gastos_por_municipio.head(20), 
-                x='nm_municipio', 
-                y='total_gasto',
-                title=f'Top 20 Municípios do Ceará por Gastos - {opcao_municipio}',
-                labels={'nm_municipio': 'Município', 'total_gasto': 'Total Gasto (R$)'},
-                color='total_gasto',
-                color_continuous_scale='Viridis',
-                hover_data={'qtd_manutencoes': True, 'ticket_medio': ':,.2f'}
-            )
-            fig_gastos_mun.update_layout(
-                xaxis_tickangle=-45, 
-                template='plotly_white',
-                yaxis_tickformat="R$,.2f",
-                height=400
-            )
-            st.plotly_chart(fig_gastos_mun, use_container_width=True)
-        else:
-            st.info("Nenhum dado de manutenção disponível para este município.")
-            
+                
+                fig_gastos_mun = px.bar(
+                    gastos_por_municipio.head(20), 
+                    x='nm_municipio', 
+                    y='total_gasto',
+                    title='Top 20 Municípios do Ceará por Volume de Gastos',
+                    labels={'nm_municipio': 'Município', 'total_gasto': 'Total Gasto (R$)'},
+                    color='total_gasto',
+                    color_continuous_scale='Viridis',
+                    hover_data={'qtd_manutencoes': True, 'ticket_medio': ':,.2f'}
+                )
+                fig_gastos_mun.update_layout(
+                    xaxis_tickangle=-45, 
+                    template='plotly_white',
+                    yaxis_tickformat="R$,.2f",
+                    height=400
+                )
+                st.plotly_chart(fig_gastos_mun, use_container_width=True)
+            else:
+                st.info("Nenhum dado de manutenção disponível para processar o ranking estadual.")
+                
+        st.markdown("---")
+        
+        # ── 🏗️ DIAGNÓSTICO DE TRANSPARÊNCIA E GEOLOCALIZAÇÃO ──────────────────
         col_t2_l, col_t2_r = st.columns(2)
         
         with col_t2_l:
@@ -569,12 +653,13 @@ Indica frotas possivelmente defasadas.
                 
                 with st.container(border=True):
                     st.markdown("**1. Falta de Detalhamento Técnico (Descrição Curta < 25 carac.):**")
-                    st.write(f"- **OSs Afetadas:** {len(df_alert_curto)} ({len(df_alert_curto)/qtd_os*100:.1f}% das OSs)" if qtd_os > 0 else "- **OSs Afetadas:** 0")
+                    # Uso da variável global total_os_filtrado para evitar o NameError
+                    st.write(f"- **OSs Afetadas:** {len(df_alert_curto)} ({len(df_alert_curto)/total_os_filtrado*100:.1f}% das OSs)" if total_os_filtrado > 0 else "- **OSs Afetadas:** 0")
                     st.write(f"- **Volume Financeiro sob Suspeição:** R$ {gasto_curto:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                     
                     st.markdown("---")
                     st.markdown("**2. OSs Agrupadas (Múltiplos Veículos na Mesma Descrição):**")
-                    st.write(f"- **OSs Afetadas:** {len(df_alert_agrup)} ({len(df_alert_agrup)/qtd_os*100:.1f}% das OSs)" if qtd_os > 0 else "- **OSs Afetadas:** 0")
+                    st.write(f"- **OSs Afetadas:** {len(df_alert_agrup)} ({len(df_alert_agrup)/total_os_filtrado*100:.1f}% das OSs)" if total_os_filtrado > 0 else "- **OSs Afetadas:** 0")
                     st.write(f"- **Volume Financeiro sob Suspeição:** R$ {gasto_agrup:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
             else:
                 st.info("Sem dados para análise de transparência.")
@@ -684,6 +769,55 @@ O sistema avalia individualmente o valor de cada Ordem de Serviço usando três 
                 st.metric("Outliers Z-Score (Limiar 3.0)", f"{df_manut_filtrado['is_outlier_zscore'].sum()} OS")
         else:
             st.info("Nenhum dado de manutenção ou score de suspeição disponível para este município.")
+
+        # ── 🚨 ALERTA DE IRREGULARIDADE: MANUTENÇÃO EM VEÍCULO COM CONTRATO COBERTO ──
+        st.markdown("---")
+        st.markdown("### 💸 Alerta de Conformidade: Duplicidade de Custos em Frota Locada")
+        st.write(
+            "Este módulo identifica potenciais irregularidades operacionais: Ordens de Serviço pagas pelo município "
+            "para veículos locados cujo contrato de locação previa **cobertura integral de manutenção** pela locadora contratada."
+        )
+
+        if not df_manut_filtrado.empty:
+            # Filtra OSs onde a manutenção estava inclusa no contrato de locação, mas gerou gasto público direto
+            df_duplicidade = df_manut_filtrado[
+                (df_manut_filtrado['tp_vinculacao_vm'] == 'l') & 
+                (df_manut_filtrado['loc_manut_inclusa'] == True)
+            ].copy()
+
+            if not df_duplicidade.empty:
+                total_desvio_potencial = df_duplicidade['vl_total_servicos_vma'].sum()
+                qtd_os_duplicadas = len(df_duplicidade)
+                veiculos_afetados = df_duplicidade['cd_renavam_vm'].nunique()
+
+                # Card de Alerta Crítico
+                st.error(
+                    f"⚠️ **Atenção Auditoria:** Foram identificadas **{qtd_os_duplicadas} Ordens de Serviço** "
+                    f"em **{veiculos_afetados} veículos locados** com manutenção inclusa em contrato. "
+                    f"O volume financeiro total pago indevidamente soma **R$ {total_desvio_potencial:,.2f}**."
+                )
+
+                # Tabela detalhada para o auditor investigar em campo
+                st.write("📋 **Relação de Despesas sob Suspeição de Duplicidade:**")
+                st.dataframe(
+                    df_duplicidade.sort_values(by='vl_total_servicos_vma', ascending=False),
+                    column_config={
+                        "nu_ordem_servico_vma": "Nº OS",
+                        "dt_ordem_servico_vma": "Data da OS",
+                        "nm_orgao": "Secretaria",
+                        "nm_razao_prest_norm": "Oficina Executora",
+                        "vl_total_servicos_vma": st.column_config.NumberColumn("Valor Pago", format="R$ %,.2f"),
+                        "de_servicos_vma_quebrado": "Descrição do Serviço"
+                    },
+                    column_order=[
+                        "nu_ordem_servico_vma", "dt_ordem_servico_vma", "nm_orgao", 
+                        "nm_razao_prest_norm", "vl_total_servicos_vma", "de_servicos_vma_quebrado"
+                    ],
+                    hide_index=True,
+                    use_container_width=True
+                )
+            else:
+                st.success("✅ **Conformidade Contratual:** Nenhuma ordem de serviço paga pelo município foi identificada para veículos locados com cobertura de manutenção ativa.")
 
         # ── 🚨 CONDICIONAL EXCLUSIVA PARA O PANORAMA ESTADUAL ──────────────────
         if opcao_municipio == "Todos os Municípios":
@@ -885,6 +1019,7 @@ Este gráfico cruza três variáveis simultaneamente para identificar visualment
                 )
             else:
                 st.info("Nenhuma nota de empenho sob suspeição nesta área.")
+
 
     # ── Rodapé Informativo ────────────────────────────────────────────────────
     st.markdown("---")

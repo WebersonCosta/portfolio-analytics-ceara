@@ -112,6 +112,25 @@ def normaliza_bases(df_veiculos, df_manut_raw, df_locados):
     # Aplicamos o nome mestre de volta à base
     df_manut_raw['nm_razao_prest_norm'] = df_manut_raw['nu_doc_prest_norm'].map(mapa_nomes_prestadores)
 
+    # ── 🔄 [Antigravity 2.0] ENGENHARIA DE ATRIBUTOS PARA VIABILIDADE REAL ──
+    if 'cd_renavam_vm' in df_veiculos.columns and 'tp_vinculacao_vm' in df_veiculos.columns:
+        mapa_vinculo_mestre = df_veiculos.set_index('cd_renavam_vm')['tp_vinculacao_vm'].to_dict()
+        df_manut_raw['tp_vinculacao_vm'] = df_manut_raw['cd_renavam_vm'].map(mapa_vinculo_mestre)
+    else:
+        df_manut_raw['tp_vinculacao_vm'] = 'p'
+
+    # Mapeia se o veículo locado possui manutenção inclusa no contrato
+    if not df_locados.empty and 'cd_renavam_vm' in df_locados.columns:
+        # Garante tratamento para booleanos ou strings ('True', 'False', True, False)
+        df_locados['manut_inclusa'] = df_locados['cd_loc_com_manutencao_vl'].astype(str).str.upper().str.strip() == 'TRUE'
+        mapa_manut_contrato = df_locados.set_index('cd_renavam_vm')['manut_inclusa'].to_dict()
+        
+        df_manut_raw['loc_manut_inclusa'] = df_manut_raw['cd_renavam_vm'].map(mapa_manut_contrato).fillna(False)
+        df_veiculos['loc_manut_inclusa'] = df_veiculos['cd_renavam_vm'].map(mapa_manut_contrato).fillna(False)
+    else:
+        df_manut_raw['loc_manut_inclusa'] = False
+        df_veiculos['loc_manut_inclusa'] = False
+
     return df_veiculos, df_manut_raw, df_locados
 
 def enriquece_veiculos(df_veiculos, ano):
