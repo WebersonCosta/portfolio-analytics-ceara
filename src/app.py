@@ -564,6 +564,49 @@ Indica frotas possivelmente defasadas.
                     f"Este dado indica que, para este recorte, a terceirização sem manutenção inclusa pode estar sobrecarregando as finanças locais "
                     f"em oficinas mecânicas contratadas."
                 )
+
+            # ── 📊 [Antigravity 2.0] GRÁFICO COMPARATIVO DE CUSTO UNITÁRIO ──
+            # Cria um DataFrame leve em tempo de execução para plotagem
+            df_custo_comp = pd.DataFrame({
+                "Modelo de Frota": ["Frota Própria", "Frota Locada (s/ contrato de oficina)"],
+                "Custo Médio Anual (R$)": [custo_p, custo_l],
+                "Cor_Apresentacao": ["#1f77b4", "#ff7f0e"] # Azul para própria, Laranja para locada
+            })
+
+            fig_comp_custo = px.bar(
+                df_custo_comp,
+                x="Custo Médio Anual (R$)",
+                y="Modelo de Frota",
+                orientation="h",
+                color="Modelo de Frota",
+                color_discrete_map={
+                    "Frota Própria": "#2196F3", 
+                    "Frota Locada (s/ contrato de oficina)": "#FF9800"
+                },
+                title="Comparativo: Custo Médio de Manutenção Anual por Veículo Único"
+            )
+
+            # Estilização para garantir leitura perfeita em Light e Dark Mode
+            fig_comp_custo.update_layout(
+                template="plotly_white",
+                xaxis_tickformat="R$,.2f",
+                height=250,
+                showlegend=False,
+                margin=dict(l=20, r=20, t=40, b=20),
+                xaxis_title="Gasto Médio com Oficina (Anual por Veículo)",
+                yaxis_title=""
+            )
+
+            # Adiciona os rótulos de valores diretamente na ponta das barras
+            fig_comp_custo.update_traces(
+                texttemplate="R$ %{x:,.2f}",
+                textposition="outside",
+                cliponaxis=False
+            )
+
+            # Renderiza no Streamlit
+            st.plotly_chart(fig_comp_custo, use_container_width=True)
+            
         else:
             st.info("Dados insuficientes para calcular a viabilidade de custos por tipo de vínculo.")
             

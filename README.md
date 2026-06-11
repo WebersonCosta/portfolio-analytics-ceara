@@ -1,138 +1,296 @@
-# 🚚 Auditoria e Análise de Dados de Manutenção (Frota Municipal - Ceará 2025)
-
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+# 🚚 Auditoria de Frota Municipal — Análise de Viabilidade Financeira entre Frota Própria e Frota Locada (Ceará, 2025)
+ 
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/framework-Streamlit-red.svg)](https://streamlit.io/)
+[![Disciplina](https://img.shields.io/badge/disciplina-Tópicos%20de%20BigData%20e%20Análise%20de%20Dados%20em%20Python-orange.svg)]()
 [![Licença](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+ 
+**Fonte:** Sistema de Informações Municipais (SIM) — TCE-CE  
+**Recorte:** 184 municípios do Ceará — ano completo de 2025  
+**Tabelas:** veiculos_municipais_2025, veiculos_manutencoes_2025, veiculos_locados_2025, veiculos_cedidos_2025  
+**Disciplina:** Tópicos de Big Data em Python
 
-Este repositório contém uma solução completa de engenharia de dados, detecção de anomalias por Machine Learning e auditoria de gastos públicos direcionada à frota de veículos municipais do Ceará no ano de 2025. 
-
-O projeto consome dados brutos de contratos e ordens de serviço (OS) de manutenção e entrega um **Dashboard de Inteligência e Geolocalização** interativo, desenvolvido em Streamlit, para auxiliar órgãos de controle social e auditoria de campo.
-
+> Centro Universitário Estácio, 2026
+ 
 ---
-
-## 🔎 O Problema Analítico: A Auditoria dos R$ 111,4 Milhões
-
-Em 2025, os municípios do Ceará empenharam e liquidaram um total de **R$ 111,4 milhões** em ordens de serviço válidas para manutenção de veículos públicos (próprios, locados e cedidos). Diante desse montante expressivo de recursos públicos, nossa equipe estruturou um pipeline automatizado de auditoria para identificar padrões incomuns de contratação, desvios fiscais e indícios de fraude.
-
-As principais vulnerabilidades críticas reveladas pelo sistema foram:
-1. **Monopólio de Execução e Omissão de Cadeia:** Identificação de prestadores que centralizam parcelas milionárias de contratos em municípios específicos. Em cenários como o de Caucaia, detectou-se a concentração de cerca de **R$ 8,0 milhões** em um único CNPJ gerenciador, evidenciando distorções geradas por modelos terceirizados de gestão de frotas (gerenciamento por "cartão de manutenção" ou intermediários), que omitem o prestador de serviço final e prejudicam severamente a transparência pública.
-2. **Falta de Transparência Crítica (Descrições Curtas):** Cerca de **R$ 17,8 milhões** distribuídos em 12.887 OSs foram liberados com descrições com menos de 25 caracteres (ex: "Serviço realizado", "Reparo geral"), o que impede o controle social e a verificação do que de fato foi feito ou trocado no veículo.
-3. **Análise de Impacto Orçamentário por Órgão/Secretaria:** Atendimento a uma demanda analítica estratégica focada na correlação dos gastos de manutenção de frota com o orçamento total fixado para cada órgão na Lei Orçamentária Anual (LOA). O sistema consolida as despesas de ordens de serviço por secretaria e calcula o indicador percentual de consumo orçamentário em tempo real. Essa funcionalidade permite que o usuário identifique o peso financeiro da frota em cada pasta (como Saúde, Educação e Infraestrutura), fornecendo subsídios técnicos para que os órgãos de controle tirem suas próprias conclusões sobre a eficiência alocativa do município.
-4. **Descompasso Orçamentário e Triagem Financeira (Quarentena):** Divergência acumulada de **R$ 9,9 milhões** entre os valores faturados em OSs e as respectivas Notas de Empenho (NE). Na triagem, identificamos que apenas 18 Notas de Empenho apresentaram divergências acima de R$ 100 mil cada, retendo **R$ 5,4 milhões** sob suspeição severa (quarentena crítica) para investigação de campo.
-
+ 
+## 📌 Resumo
+ 
+Este projeto aplica um pipeline completo de Engenharia de Dados, Detecção de Anomalias por Machine Learning e Auditoria de Gastos Públicos à frota de veículos municipais do Estado do Ceará no exercício de 2025. A **questão central de pesquisa** que orientou todo o desenvolvimento foi:
+ 
+> **"Frota Própria ou Frota Locada: qual modelo de gestão se mostra mais eficiente financeiramente para os municípios cearenses?"**
+ 
+Para respondê-la, foram consumidos dados brutos de contratos, ordens de serviço de manutenção (OS) e contratos de locação, processados por um pipeline ETL automatizado e entregues em um **Dashboard Interativo de Inteligência e Geolocalização** desenvolvido em Streamlit.
+ 
 ---
+ 
+## 🔎 Contexto e Problema Analítico
+ 
+Em 2025, os municípios do Ceará empenharam e liquidaram um total de **R$ 111,4 milhões** em ordens de serviço válidas para manutenção de veículos públicos. Diante desse montante expressivo de recursos públicos, estruturou-se um pipeline automatizado de auditoria para identificar padrões incomuns de contratação, desvios fiscais e indícios de irregularidade.
+ 
+As principais vulnerabilidades reveladas pelo sistema foram:
+ 
+**1. Monopólio de Execução e Omissão de Cadeia de Prestadores**  
+Identificação de CNPJs que centralizam parcelas milionárias de contratos em municípios específicos. Em cenários como o de Caucaia, detectou-se a concentração de cerca de **R$ 8,0 milhões** em um único CNPJ gerenciador, evidenciando distorções geradas por modelos terceirizados de gestão de frotas (ex: "cartão de manutenção" e intermediários), que omitem o prestador de serviço final e comprometem severamente a transparência pública.
+ 
+**2. Falta de Transparência Técnica nas Descrições das OS**  
+Cerca de **R$ 17,8 milhões** distribuídos em 12.887 OSs foram liquidados com descrições com menos de 25 caracteres (ex: *"Serviço realizado"*, *"Reparo geral"*), o que inviabiliza o controle social e a verificação do que foi de fato executado.
+ 
+**3. Descompasso Orçamentário e Triagem Financeira**  
+Divergência acumulada de **R$ 9,9 milhões** entre os valores faturados em OSs e as respectivas Notas de Empenho (NE). Na triagem, 18 Notas de Empenho apresentaram divergências superiores a R$ 100 mil cada, retendo **R$ 5,4 milhões** em quarentena crítica para investigação de campo.
+ 
+---
+ 
+## 🎯 Questão de Pesquisa e Hipóteses
+ 
+A análise de viabilidade financeira entre os dois modelos de gestão de frota foi estruturada com base nas seguintes hipóteses:
+ 
+- **H₁ (Hipótese de Eficiência da Frota Locada):** Veículos locados, por serem em média mais novos, tendem a apresentar menor custo unitário de manutenção, mesmo quando o município assume a despesa de oficina diretamente.
+- **H₂ (Hipótese de Risco Oculto da Locação sem Cobertura):** Contratos de locação sem cláusula de manutenção inclusa podem gerar custos de oficina superiores aos da frota própria, dado o perfil de uso intensivo do serviço público.
+- **H₃ (Hipótese de Duplicidade de Custos):** Em parte dos contratos com manutenção prevista pela locadora, o município realizou pagamentos adicionais de OS, configurando potencial irregularidade contratual.
 
-## ⚙️ Engenharia da Solução
+### 📝 Conclusões das Hipóteses
+Após o processamento e saneamento do Big Data da frota cearense, os resultados revelaram que a **H₁ foi confirmada**, evidenciando uma eficiência econômica drástica no modelo de locação: enquanto a manutenção anual da frota própria custou em média **R$ 17.093,25** por veículo, os veículos locados sem cobertura de oficina demandaram apenas **R$ 618,83**. Esse comportamento reflete o impacto da idade avançada e da obsolescência dos veículos próprios frente à constante renovação da frota locada. Por consequência, a **H₂ foi refutada**, demonstrando que, mesmo quando o município assume o risco de oficina de um veículo locado, o custo de manutenção preventiva e corretiva não supera o colapso financeiro de manter uma frota própria antiga. Por fim, a **H₃ foi confirmada** como uma vulnerabilidade de controle ativo: o cruzamento de dados identificou ordens de serviço pagas por municípios para veículos cujos contratos de locação já previam cobertura integral de oficina mecânica, comprovando a existência de falhas graves de fiscalização contratual que geram vazamentos orçamentários na máquina pública.
+ 
+---
+ 
+## 📊 Principais Resultados
+ 
+### Viabilidade Financeira: Frota Própria vs. Frota Locada
+ 
+![Comparativo de Custo Médio de Manutenção por Tipo de Vínculo](img/comparativo_custo_medio.png)
+ 
+O cruzamento refinado de dados revelou um contraste drástico na eficiência operacional e financeira dos modelos de gestão avaliados no Estado do Ceará:
+ 
+- **Frota Própria:** O custo médio anual de manutenção atingiu a marca de **R$ 17.093,25** por veículo único ativo e em operação. 
+- **Frota Locada (sem cobertura de oficina):** O subgrupo de veículos alugados onde o município assumiu diretamente as despesas de manutenção apresentou um custo médio anual de apenas **R$ 618,83** por unidade.
+- **O Impacto da Discrepância:** Esta diferença representa uma economia interna de **96,3%** no custo de oficina por veículo individual quando se adota o modelo locado. 
 
-O sistema é construído de forma modular com quatro componentes principais localizados na pasta `src/`:
+Os dados demonstram que a terceirização, mesmo sob contratos sem cobertura de manutenção corretiva e preventiva pela locadora, mitiga drasticamente o impacto financeiro direto nas contas municipais. O fator preponderante para esse comportamento é a idade média e obsolescência da frota própria, que gera quebras crônicas e severas em peças de alto valor, enquanto a frota locada usufrui de ciclos constantes de renovação e menor desgaste mecânico acumulado.
+ 
+### Anomalias e Score de Suspeição (Isolation Forest + IQR + Z-Score)
+ 
+![Gráfico de Dispersão — Ordens de Serviço Suspeitas](img/outliers_scatter.png)
+ 
+A camada de inteligência analítica submeteu a base de dados a três algoritmos estatísticos e de Machine Learning concorrentes para gerar um **Score de Suspeição acumulado (de 0 a 3)**. O comportamento individual dos modelos de detecção de anomalias revelou:
+ 
+- **Outliers por Isolation Forest:** O modelo de Machine Learning não-supervisionado isolou **2.564 Ordens de Serviço** com comportamento multidimensional anômalo.
+- **Outliers por IQR (Amplitude Interquartil):** A triagem estatística robusta identificou **6.216 Ordens de Serviço** que superaram o limiar de corte superior ($Q3 + 1.5 \times IQR$).
+- **Outliers por Z-Score:** O modelo de desvio padrão identificou **1.042 Ordens de Serviço** extremas que se posicionaram a mais de 3.0 desvios padrões acima da média do Estado ($|z| > 3.0$).
 
+As instâncias posicionadas no topo do gráfico de dispersão representam as Ordens de Serviço de maior criticidade orçamentária (com picos que ultrapassam R$ 100.000,00 por conserto individual). O cruzamento dessas três camadas mapeia os registros com **Score Máximo (3)**, permitindo que a auditoria ignore ruídos estatísticos normais e foque seus esforços de fiscalização e abertura de processos administrativos exclusivamente nas anomalias severas e simultâneas da frota estadual.
+ 
+### Distribuição de Gastos por Município
+ 
+![Top 20 Municípios por Volume de Gastos](img/mapa_gastos_ceara.png)
+ 
+A análise descentralizada revelou uma forte concentração geográfica e demográfica nos volumes liquidados para manutenção de frotas no Estado do Ceará:
+ 
+- **Liderança Isolada:** O município de **Caucaia** lidera o ranking estadual com uma larga margem de distanciamento, acumulando mais de **R$ 8,0 milhões** em despesas de oficina.
+- **Concentração do Top 5:** Logo em seguida, os municípios de **Amontada** (aproximando-se de R$ 4,0 milhões), **Sobral**, **Russas** e **São Gonçalo do Amarante** completam o bloco de maiores gastos, com despesas flutuando na faixa entre R$ 3,0 milhões e R$ 3,8 milhões.
+- **Padrão de Porte e Comportamento:** Embora cidades de grande porte demográfico e extensas malhas territoriais (como Caucaia e Sobral) apresentem uma tendência natural a despesas elevadas, a presença marcante de municípios de médio porte no topo do ranking (como Amontada, Russas e Tauá) evidencia que a variação de gastos não é puramente demográfica, mas fortemente influenciada pelo comportamento local de fiscalização de contratos e pela maturidade operacional de suas frotas próprias.
+
+O agrupamento desses dados serve como uma bússola de priorização para o controle externo, indicando que uma parcela massiva do orçamento de manutenção do Estado está concentrada em poucos centros de despesa, justificando auditorias focadas e contínuas nessas regiões líderes.
+ 
+### Matriz de Contexto e Avaliação Estadual (Z-Score por Município)
+ 
+![Bubble Chart — Tamanho da Frota vs. Custo Total de Manutenção](img/bubble_chart_frota_vs_custo.png)
+
+![Matriz de Contexto — Detalhamento das Avaliações Estatísticas](img/matriz_contexto_tabela.png)
+ 
+Para evitar que municípios com frotas massivas fossem injustamente classificados como anômalos apenas pelo volume bruto, a Matriz de Contexto calcula o **Z-Score baseado no Custo Médio por Veículo**. Esse método isola desvios padronizados reais e classificou as administrações municipais em categorias críticas de controle:
+ 
+- **🔴 Crítico (Anomalia Extrema — $Z > 3.0$):** Três municípios romperam a barreira estatística de segurança máxima. **Caucaia** lidera com um Z-Score severo de **4.17** (gasto médio de R$ 48.735,77 por veículo único). Contudo, o modelo revelou anomalias graves em municípios de menor porte: **Deputado Irapuan Pinheiro** ($Z = 3.19$ e R$ 39.704,81/veículo) e **Redenção** ($Z = 3.06$ e R$ 38.532,11/veículo), indicando distorções locais profundas no custo unitário de suas oficinas.
+- **🟡 Alerta (Outlier — $2.0 < Z \le 3.0$):** Cinco municípios foram categorizados sob atenção imediata por apresentarem comportamento de custos muito acima da curva normal do Estado: **Antonina do Norte** ($Z = 2.98$), **Pindoretama** ($Z = 2.93$), **Miraima** ($Z = 2.69$), **Novo Oriente** ($Z = 2.13$) e **Boa Viagem** ($Z = 2.05$).
+- **🔵 Suspeito ($1.0 < Z \le 2.0$):** Cidades de médio e grande porte, como **Paracuru** ($Z = 1.92$) e **Farias Brito** ($Z = 1.74$), mantêm-se em monitoramento preventivo na zona de transição estatística.
+
+A combinação entre a dispersão espacial do Bubble Chart e os dados tabulados demonstra visualmente a eficiência da filtragem: enquanto municípios como Amontada e Russas geram altos volumes de gasto absoluto devido ao tamanho de suas frotas, seus posicionamentos permanecem na faixa de normalidade ou suspeição moderada. A verdadeira criticidade de auditoria isolada pelo sistema está concentrada nas esferas que combinam frotas reduzidas com faturamento de oficina hipertrofiado.
+ 
+### Irregularidades de Conformidade Contratual (Duplicidade de Custos)
+ 
+ 
+O cruzamento automatizado entre a base de execuções de oficinas e as regras de negócio dos contratos de locação revelou indícios consistentes de falha de controle interno e potenciais danos ao erário. O sistema identificou um total de **59 Ordens de Serviço (OS)** emitidas e pagas diretamente pelas administrações municipais para **14 veículos locados** cuja cobertura de manutenção preventiva e corretiva já era de responsabilidade integral das empresas locadoras contratadas. Esta inconformidade operacional resultou em um volume financeiro total pago indevidamente de **R$ 69.661,51**. O painel isola esses registros em uma tabela detalhada com número da OS, secretaria responsável e oficina executora, fornecendo um roteiro pronto e otimizado para auditorias priority de campo.
+
+ 
+---
+ 
+## ⚙️ Arquitetura da Solução
+ 
+O sistema é organizado de forma modular com quatro componentes principais na pasta `src/`:
+ 
 ```
 Analise de Dados de Manutencao - Frota Municipal/
 │
-├── dados/                       # Bases originais comprimidas (CSV, separador "¬")
-├── src/                         # Arquivos fonte em Python
-│   ├── app.py                   # Frontend Streamlit e visualizações Plotly
-│   ├── config.py                # Regras de negócio, parâmetros estatísticos e caminhos
-│   ├── etl.py                   # Engine de Extração, Transformação e Carga
-│   └── quarentena.py            # Regras financeiras e isolamento de dados
-└── README.md                    # Documentação principal
+├── dados/                         # Bases originais comprimidas (CSV, separador "¬")
+│   ├── veiculos.csv
+│   ├── veiculos_manutencao.csv
+│   ├── veiculos_locados.csv
+│   └── veiculos_cedidos.csv
+│
+├── src/                           # Código-fonte Python
+│   ├── app.py                     # Frontend Streamlit e visualizações Plotly
+│   ├── config.py                  # Parâmetros estatísticos, regras de negócio e caminhos
+│   ├── etl.py                     # Engine de Extração, Transformação e Carga
+│   └── quarentena.py              # Regras financeiras e isolamento de dados
+│
+└── README.md
 ```
+ 
+### 1. Carregamento dos Dados e Engine de ETL (`src/etl.py`)
 
-### 1. Engine de ETL (`src/etl.py`)
-- **Sanitização de Strings:** Normalização de textos via decomposição Unicode NFKD para remoção automática de acentos, caracteres especiais e padronização em caixa alta.
-- **Normalização de CNPJ/CPF:** Padronização e remoção de pontuações de documentos de fornecedores.
-- **Deduplicação por Moda:** Criação de um dicionário mestre de Razão Social por CNPJ utilizando a moda (`.mode()`) estatística para evitar duplicidades no ranking geradas por erros de digitação.
-- **Deduplicação de Contratos Locados:** Eliminação de aditivos contratuais redundantes baseada em regras de prioridade temporal e modal definidos no `config.py`.
+Todos os arquivos foram exportados do banco SIM/TCE-CE via DBeaver com separador `¬`.
 
-### 2. Triagem e Qualidade de Dados (`src/quarentena.py`)
-- **Auditoria Financeira:** Agrupa gastos de OSs por Nota de Empenho e calcula a diferença em relação ao valor empenhado.
-- **Vetorização com NumPy:** Separa os dados de manutenção em três sub-datasets com base na gravidade do descompasso:
-  - `df_valido`: Inconsistências dentro do limite tolerável ($ 0.01).
-  - `df_investigacao`: Diferenças moderadas (R$ 10k a R$ 100k).
-  - `df_quarentena`: Divergências críticas (> R$ 100k) isoladas para evitar distorções estatísticas.
+| Arquivo | Descrição |
+|---|---|
+| `veiculos.csv` | Cadastro da frota municipal |
+| `veiculos_manutencao.csv` | Manutenções com execução financeira, destinação e dados da Receita Federal |
+| `veiculos_locados.csv` | Contratos de locação com modalidade e cláusulas |
+| `veiculos_cedidos.csv` | Termos de cessão entre municípios |
 
+---
+> **Nota sobre a tabela de manutenções:** é o resultado de um join entre a tabela 995 do SIM,
+> a view de execução orçamentária, a tabela de destinações e os dados da Receita Federal.
+> Isso elimina a necessidade de carregar tabelas auxiliares separadas.
+ 
+- **Sanitização de Strings:** Normalização via decomposição Unicode NFKD para remoção automática de acentos e padronização em caixa alta.
+- **Normalização de CNPJ/CPF:** Padronização e limpeza de documentos de fornecedores.
+- **Deduplicação por Moda:** Construção de um dicionário mestre de Razão Social por CNPJ utilizando `.mode()` estatístico para evitar duplicidades geradas por erros de digitação no ranking de prestadores.
+- **Deduplicação de Contratos Locados:** Eliminação de aditivos contratuais redundantes com base em regras de prioridade temporal e modal definidas no `config.py`.
+### 2. Triagem e Quarentena Financeira (`src/quarentena.py`)
+ 
+Audita o descompasso orçamentário agrupando gastos de OSs por Nota de Empenho e calculando a diferença em relação ao valor empenhado. Os dados são particionados em três sub-datasets:
+ 
+| Dataset | Critério | Finalidade |
+|---|---|---|
+| `df_valido` | Diferença ≤ R$ 0,01 | Base principal de análise |
+| `df_investigacao` | Diferença entre R$ 10k e R$ 100k | Investigação moderada |
+| `df_quarentena` | Diferença > R$ 100k | Isolamento crítico, evita distorções estatísticas |
+ 
 ### 3. Integração com APIs Governamentais
-- **DE-PARA IBGE (TCE-CE):** Consumo dinâmico da API aberta do Tribunal de Contas do Estado do Ceará (`https://api-dados-abertos.tce.ce.gov.br/sim/municipios`) para converter o código interno de 3 dígitos das cidades no código oficial do IBGE de 6 e 7 dígitos.
-- **Resiliência e Timeout:** Tratamento rigoroso de exceções e timeouts de rede para assegurar a continuidade do pipeline mesmo em caso de instabilidade dos servidores do TCE.
-- **Orçamento de Despesa por Órgão (TCE-CE):** Integração em tempo de execução com o endpoint `/orcamento_despesa` utilizando o sufixo temporal de exercício `202500` para extrair o orçamento total fixado na LOA para cada Secretaria/Órgão.
-
-### 4. Modelos Antifraude (Detecção de Outliers)
-- **Isolation Forest (Machine Learning):** Algoritmo não-supervisionado treinado nas ordens de serviço válidas usando o limiar de contaminação definido centralizadamente em `config.py`.
-- **Filtros Estatísticos IQR e Z-Score:** Cruzamento matemático clássico (IQR = 1.5 e Z-Score = 3.0) para gerar um "Score de Suspeição" integrado (0 a 3 indicando quantos modelos classificaram a OS como anômala).
-
+ 
+- **DE-PARA IBGE via TCE-CE:** Conversão do código interno municipal (3 dígitos) para o código oficial IBGE (6 dígitos), habilitando a geolocalização no mapa cloroplético.
+- **Orçamento LOA por Secretaria:** Consumo em tempo real do endpoint `/orcamento_despesa` do TCE-CE para calcular o percentual do orçamento de cada órgão consumido por despesas de manutenção de frota.
+- **Resiliência:** Tratamento rigoroso de exceções e timeouts de rede com cache `@st.cache_data` (TTL de 1 hora) para garantir continuidade mesmo em instabilidades dos servidores externos.
+### 4. Camada Antifraude (Detecção de Outliers Multicamada)
+ 
+Três modelos independentes avaliam cada Ordem de Serviço e contribuem para um **Score de Suspeição** de 0 a 3:
+ 
+| Modelo | Abordagem | Limiar |
+|---|---|---|
+| **Isolation Forest** | Machine Learning não-supervisionado | `contamination` configurável em `config.py` |
+| **IQR** | Amplitude Interquartil estatística | `Q3 + 1.5 × IQR` |
+| **Z-Score** | Desvio padrão em relação à média | `\|z\| > 3.0` |
+ 
+Uma OS com **Score 3** foi considerada anômala simultaneamente pelos três modelos, configurando alerta máximo crítico.
+ 
 ---
+ 
+## 🖥️ Dashboard Interativo — Visão Geral
+ 
+O painel é estruturado em três abas de navegação com comportamento reativo, se adaptando ao contexto de seleção (panorama estadual ou município individual).
+ 
+### Tab 1 — Perfil da Frota
+- Situação real da frota (Em Operação, Baixada, Cedida) por gráfico de barras.
+- Distribuição de idade dos veículos por tipo de vínculo (boxplot).
+- **[Modo Municipal]** Top 5 Veículos com maior acúmulo de OS e Top 5 Prestadores locais.
+- **[Modo Municipal]** Impacto orçamentário por Secretaria cruzado com a LOA via API do TCE-CE.
+### Tab 2 — Análise de Gastos e Prestadores
+- **Comparativo de Viabilidade Financeira** (Frota Própria × Frota Locada sem cobertura): custo médio anual por veículo com indicador de suporte à decisão.
+- Top 10 Prestadores de Serviço por volume financeiro recebido.
+- **[Modo Estadual]** Top 20 Municípios por volume de gastos.
+- Diagnóstico de transparência: OS com descrição curta e OS agrupadas.
+### Tab 3 — Modelos Antifraude & Quarentena
+- Gráfico de dispersão com as 500 OSs de maior Score de Suspeição.
+- **[Modo Estadual]** Ranking de Custo Médio por Veículo, Matriz Z-Score e Bubble Chart multidimensional.
+- Módulo de conformidade contratual: detecção de duplicidade de custos em frota locada com cobertura.
+- Rosca de retenção financeira com detalhamento das Notas de Empenho críticas.
 
-## 🖥️ Dashboard Streamlit em Abas
 
-O painel central de geolocalização e auditoria é estruturado em **3 abas de navegação** alimentadas de forma reativa e contextual:
+![Visão Geral do Dashboard de Auditoria](img/dashboard_overview.png)
+![Visão Geral do Dashboard de Auditoria](img/dashboard_overview_2.png)
 
-### Tab 1: Perfil da Frota
-- **Situação Real da Frota:** Gráfico de barras (`plotly_express`) demonstrando a distribuição ativa por finalidade do veículo.
-- **Distribuição de Idade por Vínculo:** Gráfico Boxplot interativo comparando a idade e a dispersão dos veículos com Tooltip explicativo de alfabetização de dados estatísticos (Data Literacy).
-- **🔎 Investigação Detalhada do Município (Modo Individual):** Módulo reativo ativado apenas quando uma cidade específica é selecionada, revelando o Top 5 Veículos "Campeões de Gasto" (Placa, Marca e Modelo, omitindo o hash do Renavam) e o Top 5 Prestadores Locais.
-- **📊 Impacto Orçamentário por Secretaria (Modo Individual):** Tabela dinâmica que consome a API do TCE-CE ao vivo e calcula o `%_Gasto_Manutencao` em relação ao orçamento total fixado daquela pasta, denunciando quais secretarias tiveram o orçamento "engolido" pela frota.
-
-### Tab 2: Análise de Gastos e Prestadores
-- **Top 10 Prestadores de Serviço:** Gráfico de barras horizontal demonstrando quais empresas centralizam os maiores aportes financeiros.
-- **Top 20 Municípios por Volume de Gastos:** Identificação visual rápida das administrações com maior fatura de serviços contratados.
-- **Diagnóstico de Transparência:** Métricas reativas que isolam e mostram o volume financeiro envolvido em OSs com descrições curtas e descrições agrupadas.
-- **Dados de Geolocalização (IBGE):** Visualização do De-Para oficial com o IBGE obtido da API do TCE-CE.
-
-### Tab 3: Modelos Antifraude & Quarentena
-- **Detecção de Outliers Financeiros:** Gráfico de dispersão interativo contendo as 500 Ordens de Serviço mais suspeitas (Isolation Forest, Z-Score e IQR) com Tooltip técnico integrado.
-- **🏎️ Ranking de Custo Médio por Veículo (Modo Macro/Todos):** Indicador de eficiência que divide o custo total pela frota real de veículos únicos de cada cidade.
-- **🔍 Matriz de Contexto e Alertas (Modo Macro/Todos):** Tabela analítica contendo o cálculo do Z-Score de custo médio estadual, classificando os municípios em faixas de criticidade (`🚨 Crítico`, `⚠️ Alerta`, `🧐 Suspeito`, `✅ Normal`).
-- **🗺️ Visão Espacial Multidimensional (Modo Macro/Todos):** Gráfico de bolhas (*Bubble Chart*) que cruza o tamanho da Frota (X) vs. Custo Total (Y), usando o diâmetro da bolha para representar o Custo Médio por Veículo e as cores para a classificação do Z-Score.
-- **Rosca de Retenção da Quarentena:** Gráfico de rosca dinâmico com o total de recursos retidos na triagem orçamentária e uma tabela detalhada com as notas de empenho críticas.
+ 
 ---
-
+ 
 ## 👥 Guia de Replicação para a Equipe (Provisório)
-
+ 
 > [!NOTE]
 > **Aviso para a equipe:** Este guia de replicação é temporário e será removido na entrega final do repositório.
-
-Para rodar e testar o projeto na sua máquina local, siga os passos abaixo:
-
+ 
 ### Pré-requisitos
-- Python instalado (versão 3.9 ou superior recomendada).
-- Conexão ativa com a internet para carregar os dados de Geolocalização (GeoJSON) e a API do TCE-CE no primeiro carregamento.
-
+ 
+- Python 3.9 ou superior instalado.
+- Conexão ativa com a internet para carregar o GeoJSON do Ceará e consultar a API do TCE-CE no primeiro carregamento.
 ### Passo a Passo
+ 
+**1. Clonar/Navegar para o repositório:**
+```bash
+cd "Analise de Dados de Manutencao - Frota Municipal"
+```
+ 
+**2. Criar e ativar o ambiente virtual:**
+ 
+No PowerShell:
+```powershell
+python -m venv venv
+```
 
-1. **Clonar/Navegar para o repositório:**
+```powershell
+venv\Scripts\Activate
+```
+ 
+No Linux/macOS:
+```bash
+python -m venv venv
+```
 
-
-2. **Criar e Ativar Ambiente Virtual (Recomendado):**
-   No PowerShell:
-   ```powershell
-   python -m venv venv
-   ```
-   ```powershell
-   venv\Scripts\Activate
-   ```
-
-3. **Instalar Dependências:**
-   Instale todas as bibliotecas necessárias mapeadas no arquivo de manifesto do projeto:
-   ```bash
-   pip install -r requirements.txt
-
-4. **Verificar os Arquivos de Dados:**
-   Certifique-se de que a pasta `dados/` no diretório raiz contém os quatro arquivos originais:
-   - `veiculos.csv`
-   - `veiculos_manutencao.csv`
-   - `veiculos_locados.csv`
-   - `veiculos_cedidos.csv`
-   *Nota: Todos esses arquivos utilizam o caractere especial `¬` como separador de colunas.*
-
-5. **Executar o Dashboard Streamlit:**
-   Execute o comando abaixo para iniciar o servidor web de desenvolvimento local:
-   ```bash
-   python -m streamlit run src/app.py
-   ```
-
-   Após a inicialização, o Streamlit abrirá automaticamente uma janela em seu navegador padrão no endereço `http://localhost:8501`.
-
+```bash
+source venv/bin/activate
+```
+ 
+**3. Instalar as dependências:**
+```bash
+pip install -r requirements.txt
+```
+ 
+**4. Verificar os arquivos de dados:**
+ 
+Certifique-se de que a pasta `dados/` contém os quatro arquivos originais:
+- `veiculos.csv`
+- `veiculos_manutencao.csv`
+- `veiculos_locados.csv`
+- `veiculos_cedidos.csv`
+> ⚠️ Todos os arquivos utilizam o caractere especial `¬` como separador de colunas.
+ 
+**5. Executar o dashboard:**
+```bash
+python -m streamlit run src/app.py
+```
+ 
+O Streamlit abrirá automaticamente no navegador padrão em `http://localhost:8501`.
+ 
 > [!TIP]
-> **Performance de Rede:** A consulta ao orçamento municipal na Tab 1 utiliza a diretiva `@st.cache_data` do Streamlit com tempo de expiração (TTL) de 1 hora. Isso evita requisições redundantes ao servidor do TCE-CE, otimizando o consumo de banda e o tempo de resposta do painel.
-
+> **Performance de Rede:** A consulta ao orçamento municipal na Tab 1 usa `@st.cache_data` com TTL de 1 hora, evitando requisições redundantes ao TCE-CE e melhorando o tempo de resposta do painel em consultas repetidas.
+ 
 ---
+ 
+## 📚 Tecnologias Utilizadas
+ 
+| Biblioteca | Finalidade |
+|---|---|
+| `pandas` | Manipulação e transformação de dados tabulares |
+| `numpy` | Vetorização de operações numéricas na triagem |
+| `scikit-learn` | Isolation Forest para detecção de anomalias |
+| `streamlit` | Framework de dashboard interativo |
+| `plotly` | Visualizações interativas (mapas, boxplots, scatter, barras) |
+| `requests` | Consumo das APIs governamentais (TCE-CE) |
+ 
+---
+ 
+## 📄 Licença
+ 
+Distribuído sob a licença MIT. Consulte o arquivo `LICENSE` para mais informações.
+ 
+---
+ 
+*Desenvolvido para o Centro Universitário Estácio — Disciplina de Tópicos de BigData e Análise de Dados em Python, 2026.*
