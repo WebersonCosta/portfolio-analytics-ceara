@@ -1,4 +1,4 @@
-# 🚚 Auditoria de Frota Municipal — Análise de Viabilidade Financeira entre Frota Própria e Frota Locada (Ceará, 2025)
+# 🚚 Auditoria de Frota Municipal — Análise de Viabilidade Financeira e TCO entre Frota Própria e Frota Locada (Ceará, 2025)
  
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/framework-Streamlit-red.svg)](https://streamlit.io/)
@@ -26,41 +26,41 @@ Este projeto foi desenvolvido como requisito avaliativo para a disciplina de Tó
  
 ## 📌 Resumo
  
-Este projeto aplica um pipeline completo de Engenharia de Dados, Detecção de Anomalias por Machine Learning e Auditoria de Gastos Públicos à frota de veículos municipais do Estado do Ceará no exercício de 2025. A **questão central de pesquisa** que orientou todo o desenvolvimento foi:
+Este projeto aplica um pipeline avançado de Engenharia de Dados, Detecção de Anomalias por Machine Learning e Auditoria de Contratos Públicos à frota de veículos municipais do Estado do Ceará no exercício de 2025. A **questão central de pesquisa** que orientou o desenvolvimento e a modelagem foi:
  
-> **"Frota Própria ou Frota Locada: qual modelo de gestão se mostra mais eficiente financeiramente para os municípios cearenses?"**
+> **"Frota Própria ou Frota Locada: qual modelo de gestão apresenta o menor Custo Total de Propriedade (TCO) para os municípios cearenses"**
  
-Para respondê-la, foram consumidos dados brutos de contratos, ordens de serviço de manutenção (OS) e contratos de locação, processados por um pipeline ETL automatizado e entregues em um **Dashboard Interativo de Inteligência e Geolocalização** desenvolvido em Streamlit.
- 
+Para respondê-la, estruturou-se um pipeline ETL capaz de unificar os históricos de ordens de serviço de manutenção (OS) com os valores de parcelas de aluguel individualizadas por veículo único. O ecossistema analítico e os indicadores antifraude são disponibilizados em um **Dashboard Interativo de Inteligência e Geolocalização** em Streamlit.
+
 ---
  
 ## 🔎 Contexto e Problema Analítico
  
-Em 2025, os municípios do Ceará empenharam e liquidaram um total de **R$ 111,4 milhões** em ordens de serviço válidas para manutenção de veículos públicos. Diante desse montante expressivo de recursos públicos, estruturou-se um pipeline automatizado de auditoria para identificar padrões incomuns de contratação, desvios fiscais e indícios de irregularidade.
+Em 2025, os municípios do Ceará movimentaram **R$ 111,4 milhões** em ordens de serviço de manutenção de veículos e empenharam **R$ 238,5 milhões** em contratos de locação de frotas terceirizadas. A ausência de cruzamentos automatizados entre o cadastro patrimonial, as notas fiscais de oficinas e as cláusulas restritivas de aluguel oculta severas ineficiências na máquina pública.
  
-As principais vulnerabilidades reveladas pelo sistema foram:
+As principais vulnerabilidades fiscais reveladas pelo sistema foram:
  
-**1. Monopólio de Execução e Omissão de Cadeia de Prestadores**  
-Identificação de CNPJs que centralizam parcelas milionárias de contratos em municípios específicos. Em cenários como o de Caucaia, detectou-se a concentração de cerca de **R$ 8,0 milhões** em um único CNPJ gerenciador, evidenciando distorções geradas por modelos terceirizados de gestão de frotas (ex: "cartão de manutenção" e intermediários), que omitem o prestador de serviço final e comprometem severamente a transparência pública.
+**1. Omissão de Cadeia de Prestadores finais (Intermediários)** CNPJs gerenciadores de frotas ("cartões de manutenção") centralizam valores milionários, omitindo os estabelecimentos reais que executaram os reparos. Em Caucaia, um único CNPJ reteve cerca de **R$ 8,00 milhões**, reduzindo a transparência pública.
  
-**2. Falta de Transparência Técnica nas Descrições das OS**  
-Cerca de **R$ 17,8 milhões** distribuídos em 12.887 OSs foram liquidados com descrições com menos de 25 caracteres (ex: *"Serviço realizado"*, *"Reparo geral"*), o que inviabiliza o controle social e a verificação do que foi de fato executado.
+**2. Falta de Detalhes Técnicos nas Ordens de Serviço** Aproximadamente **R$ 17,80 milhões** foram liquidados em 12.887 OSs cujas descrições possuíam menos de 25 caracteres (ex: *"Serviço realizado"*, *"Reparo geral"*), inviabilizando auditorias digitais de conformidade de preços.
  
-**3. Descompasso Orçamentário e Triagem Financeira**  
-Divergência acumulada de **R$ 9,9 milhões** entre os valores faturados em OSs e as respectivas Notas de Empenho (NE). Na triagem, 18 Notas de Empenho apresentaram divergências superiores a R$ 100 mil cada, retendo **R$ 5,4 milhões** em quarentena crítica para investigação de campo.
+**3. Descompasso Orçamentário e Retenções Críticas** Divergência acumulada de **R$ 9,90 milhões** entre os valores faturados em oficinas e os empenhados originalmente. O sistema isolou **R$ 5,40 milhões** em quarentena de investigação por inconsistências orçamentárias graves (divergências > R$ 100 mil por Nota de Empenho).
  
 ---
  
 ## 🎯 Questão de Pesquisa e Hipóteses
  
-A análise de viabilidade financeira entre os dois modelos de gestão de frota foi estruturada com base nas seguintes hipóteses:
+A modelagem estatística e financeira avaliou as decisões logísticas com base em três hipóteses centrais:
  
-- **H₁ (Hipótese de Eficiência da Frota Locada):** Veículos locados, por serem em média mais novos, tendem a apresentar menor custo unitário de manutenção, mesmo quando o município assume a despesa de oficina diretamente.
-- **H₂ (Hipótese de Risco Oculto da Locação sem Cobertura):** Contratos de locação sem cláusula de manutenção inclusa podem gerar custos de oficina superiores aos da frota própria, dado o perfil de uso intensivo do serviço público.
-- **H₃ (Hipótese de Duplicidade de Custos):** Em parte dos contratos com manutenção prevista pela locadora, o município realizou pagamentos adicionais de OS, configurando potencial irregularidade contratual.
+- **H₁ (Hipótese de Eficiência da Frota Locada):** Veículos locados, por serem mais novos, apresentam menor custo unitário de oficina do que os próprios, justificando a assinatura contratual.
+- **H₂ (Hipótese de Risco Oculto da Locação sem Cobertura):** O valor de aquisição do contrato de locação somado a despesas de oficina residuais (em contratos sem cobertura) torna a terceirização mais cara que a gestão de frota própria antiga.
+- **H₃ (Hipótese de Duplicidade Contratual):** Municípios efetuaram pagamentos diretos por manutenções de veículos cujos contratos de locação já previam cobertura integral de oficina pela empresa locadora.
 
 ### 📝 Conclusões das Hipóteses
-Após o processamento e saneamento do Big Data da frota cearense, os resultados revelaram que a **H₁ foi confirmada**, evidenciando uma eficiência econômica drástica no modelo de locação: enquanto a manutenção anual da frota própria custou em média **R$ 17.093,25** por veículo, os veículos locados sem cobertura de oficina demandaram apenas **R$ 618,83**. Esse comportamento reflete o impacto da idade avançada e da obsolescência dos veículos próprios frente à constante renovação da frota locada. Por consequência, a **H₂ foi refutada**, demonstrando que, mesmo quando o município assume o risco de oficina de um veículo locado, o custo de manutenção preventiva e corretiva não supera o colapso financeiro de manter uma frota própria antiga. Por fim, a **H₃ foi confirmada** como uma vulnerabilidade de controle ativo: o cruzamento de dados identificou ordens de serviço pagas por municípios para veículos cujos contratos de locação já previam cobertura integral de oficina mecânica, comprovando a existência de falhas graves de fiscalização contratual que geram vazamentos orçamentários na máquina pública.
+Após a consolidação do pipeline de TCO, os resultados empíricos demonstraram que:
+* **H₁ foi confirmada:** O gasto médio anual puro de oficina da frota própria foi de **R$ 17.093,25** por veículo ativo, enquanto a frota locada exigiu apenas **R$ 618,83** de manutenção residual.
+* **H₂ foi confirmada:** A inclusão do valor do contrato de locação anualizado inverteu a vantagem financeira. O TCO anualizado do veículo locado atingiu **R$ 52.889,84**, provando que o contrato de aluguel supera drasticamente os custos acumulados de oficina de um veículo próprio antigo de curto prazo.
+* **H₃ foi confirmada:** O cruzamento direto de Renavams identificou fraudes e falhas operacionais graves de fiscalização, onde prefeituras pagaram oficinas mecânicas particulares por consertos de veículos que possuíam cobertura contratual obrigatória pela locadora.
  
 ---
  
@@ -68,7 +68,7 @@ Após o processamento e saneamento do Big Data da frota cearense, os resultados 
  
 ### Viabilidade Financeira: Frota Própria vs. Frota Locada
  
-![Comparativo de Custo Médio de Manutenção por Tipo de Vínculo](img/comparativo_custo_medio.png)
+![Comparativo de Custo Médio de Manutenção por Tipo de Vínculo](img/comparativo_custo_medio_c.png)
  
 O cruzamento refinado de dados revelou um contraste drástico na eficiência operacional e financeira dos modelos de gestão avaliados no Estado do Ceará:
  

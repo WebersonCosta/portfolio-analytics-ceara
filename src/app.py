@@ -102,6 +102,7 @@ def load_all_data():
             
             mean_p = df_valido['vl_total_servicos_vma'].mean()
             std_p = df_valido['vl_total_servicos_vma'].std()
+
             if std_p > 0:
                 df_valido['z_score'] = (df_valido['vl_total_servicos_vma'] - mean_p) / std_p
             else:
@@ -124,6 +125,19 @@ def load_all_data():
 # Carregando as bases de dados e o GeoJSON
 try:
     df_veiculos, df_manut_os, df_invest, df_qr, ne_qr, ne_invest, df_locados, df_ibge = load_all_data()
+
+    print("\n=== VERIFICANDO RATEIO APÓS CORREÇÃO ===")
+    df_check = df_locados[df_locados['nu_contrato_pai'] == '0954']
+    print(df_check[['cd_renavam_vm','nu_contrato_pai','dt_ref_vl','custo_locacao_anual']].to_string())
+    print("\nTipo de nu_contrato_pai:", df_locados['nu_contrato_pai'].dtype)
+    print("Tipo de dt_ref_vl:", df_locados['dt_ref_vl'].dtype)
+
+
+    print("=== VERIFICAÇÃO PÓS-CORREÇÃO ===")
+    print("Distribuição de custo_locacao_anual (df_veiculos, só > 0):")
+    print(df_veiculos[df_veiculos['custo_locacao_anual']>0]['custo_locacao_anual'].describe())
+    print("\nSoma total custo_locacao_anual em df_veiculos:", df_veiculos['custo_locacao_anual'].sum())
+
     geojson_data = carregar_geojson_ceara()
     data_loaded_successfully = True
 except Exception as e:
@@ -211,7 +225,8 @@ if data_loaded_successfully:
             hoverinfo='skip'
         )
         
-        fig_mapa.data = (camada_fundo,) + fig_mapa.data
+        fig_mapa.add_trace(camada_fundo)
+        fig_mapa.data = (fig_mapa.data[-1],) + fig_mapa.data[:-1]
         
         fig_mapa.update_geos(
             fitbounds="locations",
@@ -508,10 +523,12 @@ Indica frotas possivelmente defasadas.
         # Cálculo global e seguro do total de OS para evitar NameError nas métricas abaixo
         total_os_filtrado = len(df_manut_filtrado) if not df_manut_filtrado.empty else 0
 
-        st.markdown("### ⚖️ Viabilidade Financeira: Custo de Manutenção por Tipo de Vínculo")
+        st.markdown("### ⚖️ Viabilidade Financeira: TCO (Custo Total de Propriedade) por Tipo de Vínculo")
         st.write(
             "Esta análise fornece subsídios estratégicos para a tomada de decisão de gastos públicos, "
-            "comparando o custo médio anual de manutenção por veículo entre frotas Próprias e Locadas."
+            "comparando o Custo Total Anual por veículo entre frotas Próprias e Locadas. "
+            "Para a frota locada, o custo considera o **valor do contrato de locação anualizado** "
+            "somado aos gastos de manutenção pagos diretamente pelo município."
         )
 
         if not df_manut_filtrado.empty and not df_veiculos_filtrado.empty:
@@ -519,24 +536,43 @@ Indica frotas possivelmente defasadas.
             df_frota_ativos = df_veiculos_filtrado[df_veiculos_filtrado['situacao_real'] == 'Em Operação']
             
             # --- PROCESSAMENTO: FROTA PRÓPRIA ---
+            # (TCO da frota própria = só manutenção, pois não há custo de "aluguel")
             qtd_p = df_frota_ativos[df_frota_ativos['tp_vinculacao_vm'] == 'p']['cd_renavam_vm'].nunique()
             total_p = df_manut_filtrado[df_manut_filtrado['tp_vinculacao_vm'] == 'p']['vl_total_servicos_vma'].sum()
             custo_p = total_p / qtd_p if qtd_p > 0 else 0.0
             
-            # --- PROCESSAMENTO: FROTA LOCADA (A GRANDE CORREÇÃO COBERTA POR CONTRATO) ---
-            # Filtramos apenas a quantidade de veículos locados onde a manutenção NÃO está inclusa no contrato (gasto direto da prefeitura)
-            qtd_l = df_frota_ativos[
-                (df_frota_ativos['tp_vinculacao_vm'] == 'l') & 
-                (df_frota_ativos['loc_manut_inclusa'] == False)
-            ]['cd_renavam_vm'].nunique()
-            
-            # Filtramos as despesas de manutenção geradas apenas por veículos locados sem cobertura
-            total_l = df_manut_filtrado[
+            # --- PROCESSAMENTO: FROTA LOCADA — TCO (Locação Anualizada + Manutenção Residual) ---
+            # 🆕 Agora consideramos TODOS os veículos locados ativos (não só os sem cobertura),
+            # pois o custo de locação entra para todos.
+            df_locados_ativos = df_frota_ativos[df_frota_ativos['tp_vinculacao_vm'] == 'l']
+
+            # Separa os que têm custo de locação anualizável de forma confiável
+            df_locados_tco_ok = df_locados_ativos[df_locados_ativos['custo_loc_anualizavel'] == True]
+            df_locados_sem_tco = df_locados_ativos[df_locados_ativos['custo_loc_anualizavel'] == False]
+
+            qtd_l = df_locados_tco_ok['cd_renavam_vm'].nunique()
+            qtd_l_excluidos = df_locados_sem_tco['cd_renavam_vm'].nunique()
+
+            total_locacao = (
+                df_locados_tco_ok
+                .drop_duplicates(subset='cd_renavam_vm')['custo_locacao_anual']
+                .sum()
+            )
+
+            total_manut_l = df_manut_filtrado[
                 (df_manut_filtrado['tp_vinculacao_vm'] == 'l') & 
-                (df_manut_filtrado['loc_manut_inclusa'] == False)
+                (df_manut_filtrado['loc_manut_inclusa'] == False) &
+                (df_manut_filtrado['cd_renavam_vm'].isin(df_locados_tco_ok['cd_renavam_vm']))
             ]['vl_total_servicos_vma'].sum()
-            
-            custo_l = total_l / qtd_l if qtd_l > 0 else 0.0
+
+            custo_l = (total_locacao + total_manut_l) / qtd_l if qtd_l > 0 else 0.0
+
+            # Aviso sobre exclusões
+            if qtd_l_excluidos > 0:
+                st.caption(
+                    f"⚠️ {qtd_l_excluidos} veículos locados com remuneração por **Quilometragem/Hora/Quinzena** "
+                    f"foram excluídos deste TCO por falta de dados de quantidade contratada para anualização."
+                )
             
             # ── 📐 RENDERIZAÇÃO DOS BLOCOS VISUAIS COMPARATIVOS (MÉTRICAS) ──
             c_prop, c_loc = st.columns(2)
@@ -544,20 +580,25 @@ Indica frotas possivelmente defasadas.
             with c_prop:
                 st.info("🏢 MODELO: FROTA PRÓPRIA")
                 if qtd_p > 0:
-                    st.metric("Custo Médio de Manutenção / Veículo", f"R$ {custo_p:,.2f}")
-                    st.caption(f"**Frota Ativa s/ Contrato:** {qtd_p} veículos | **Gasto Oficinas:** R$ {total_p:,.2f}")
+                    st.metric("Custo Total Anual / Veículo (TCO)", f"R$ {custo_p:,.2f}")
+                    st.caption(f"**Frota Ativa:** {qtd_p} veículos | **Gasto Oficinas:** R$ {total_p:,.2f}")
                 else:
-                    st.metric("Custo Médio de Manutenção / Veículo", "R$ 0,00")
+                    st.metric("Custo Total Anual / Veículo (TCO)", "R$ 0,00")
                     st.caption("Nenhum veículo próprio ativo identificado nesta seleção.")
                     
             with c_loc:
                 st.warning("🚗 MODELO: FROTA LOCADA")
                 if qtd_l > 0:
-                    st.metric("Custo Médio de Manutenção / Veículo", f"R$ {custo_l:,.2f}")
-                    st.caption(f"**Frota Ativa s/ Contrato:** {qtd_l} veículos | **Gasto Oficinas:** R$ {total_l:,.2f}")
+                    st.metric("Custo Total Anual / Veículo (TCO)", f"R$ {custo_l:,.2f}")
+                    # 🆕 Caption agora detalha a composição do TCO
+                    st.caption(
+                        f"**Frota Ativa:** {qtd_l} veículos | "
+                        f"**Locação:** R\\$ {total_locacao:,.2f} | "
+                        f"**Manutenção (sem cobertura):* * R\\$ {total_manut_l:,.2f}"
+                    )
                 else:
-                    st.metric("Custo Médio de Manutenção / Veículo", "R$ 0,00")
-                    st.caption("Nenhum veículo locado ativo sem cobertura de manutenção nesta seleção.")
+                    st.metric("Custo Total Anual / Veículo (TCO)", "R$ 0,00")
+                    st.caption("Nenhum veículo locado ativo identificado nesta seleção.")
 
             # ── 💡 INSIGHT LOGÍSTICO PARA O GESTOR MUNICIPAL ──────────────────
             dif_custo = custo_p - custo_l
@@ -566,58 +607,55 @@ Indica frotas possivelmente defasadas.
             if dif_custo > 0:
                 st.write(
                     f"No cenário selecionado, manter um veículo de **Frota Própria** custa em média "
-                    f"**R$ {dif_custo:,.2f} a mais** em manutenção por ano do que um veículo **Locado** (considerando apenas contratos sem cobertura de oficina). "
-                    f"Esse indicador sugere que, mesmo quando o município assume a manutenção da frota locada, a menor idade média dos veículos "
-                    f"tende a gerar despesas de oficina mais eficientes do que o modelo de frota própria."
+                    f"**R$ {dif_custo:,.2f} a mais por ano (TCO)** do que um veículo **Locado** "
+                    f"(considerando o valor do contrato de locação anualizado somado à manutenção residual). "
+                    f"Esse indicador sugere que, mesmo somando o custo do contrato de aluguel, "
+                    f"o modelo locado tende a ser mais eficiente que manter a frota própria."
                 )
             else:
                 st.write(
-                    f"No cenário selecionado, o modelo de **Frota Locada** (sem cobertura de oficina) gerou um custo médio de manutenção de "
-                    f"**R$ {abs(dif_custo):,.2f} a mais** por veículo no ano em relação à frota própria. "
-                    f"Este dado indica que, para este recorte, a terceirização sem manutenção inclusa pode estar sobrecarregando as finanças locais "
-                    f"em oficinas mecânicas contratadas."
+                    f"No cenário selecionado, o modelo de **Frota Locada** gerou um Custo Total Anual (TCO) de "
+                    f"**R$ {abs(dif_custo):,.2f} a mais** por veículo em relação à frota própria. "
+                    f"Este dado indica que, para este recorte, o valor do contrato de locação somado à manutenção residual "
+                    f"supera o custo de manter a frota própria."
                 )
 
-            # ── 📊 [Antigravity 2.0] GRÁFICO COMPARATIVO DE CUSTO UNITÁRIO ──
-            # Cria um DataFrame leve em tempo de execução para plotagem
+            # ── 📊 GRÁFICO COMPARATIVO DE CUSTO UNITÁRIO (TCO) ──
             df_custo_comp = pd.DataFrame({
-                "Modelo de Frota": ["Frota Própria", "Frota Locada (s/ contrato de oficina)"],
-                "Custo Médio Anual (R$)": [custo_p, custo_l],
+                "Modelo de Frota": ["Frota Própria", "Frota Locada (TCO)"],
+                "Custo Total Anual (R$)": [custo_p, custo_l],
                 "Cor_Apresentacao": ["#1f77b4", "#ff7f0e"] # Azul para própria, Laranja para locada
             })
 
             fig_comp_custo = px.bar(
                 df_custo_comp,
-                x="Custo Médio Anual (R$)",
+                x="Custo Total Anual (R$)",
                 y="Modelo de Frota",
                 orientation="h",
                 color="Modelo de Frota",
                 color_discrete_map={
                     "Frota Própria": "#2196F3", 
-                    "Frota Locada (s/ contrato de oficina)": "#FF9800"
+                    "Frota Locada (TCO)": "#FF9800"
                 },
-                title="Comparativo: Custo Médio de Manutenção Anual por Veículo Único"
+                title="Comparativo: Custo Total Anual (TCO) por Veículo Único"
             )
 
-            # Estilização para garantir leitura perfeita em Light e Dark Mode
             fig_comp_custo.update_layout(
                 template="plotly_white",
                 xaxis_tickformat="R$,.2f",
                 height=250,
                 showlegend=False,
                 margin=dict(l=20, r=20, t=40, b=20),
-                xaxis_title="Gasto Médio com Oficina (Anual por Veículo)",
+                xaxis_title="Custo Total Anual por Veículo (TCO)",
                 yaxis_title=""
             )
 
-            # Adiciona os rótulos de valores diretamente na ponta das barras
             fig_comp_custo.update_traces(
                 texttemplate="R$ %{x:,.2f}",
                 textposition="outside",
                 cliponaxis=False
             )
 
-            # Renderiza no Streamlit
             st.plotly_chart(fig_comp_custo, use_container_width=True)
             
         else:

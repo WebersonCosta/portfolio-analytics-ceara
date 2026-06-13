@@ -78,9 +78,7 @@ def normaliza_bases(df_veiculos, df_manut_raw, df_locados):
             df_manut_raw[col] = pd.to_datetime(df_manut_raw[col], errors='coerce')
 
     # 2. CONVERSÃO FINANCEIRA
-    # Lista de colunas que precisam virar número na base de manutenção
     cols_financeiras = ['vl_total_servicos_vma', 'vl_empenhado_ne', 'valor_liquidado', 'valor_pago']
-    
     for col in cols_financeiras:
         if col in df_manut_raw.columns:
             df_manut_raw[col] = (
@@ -92,44 +90,95 @@ def normaliza_bases(df_veiculos, df_manut_raw, df_locados):
                 .astype(float)
             )
 
-
-    # 3. Normalização de Textos e Docs (o que você já tinha)
+    # 3. Normalização de Textos e Docs
     df_manut_raw['nm_razao_prest_norm'] = df_manut_raw['nm_razao_prest_serv_vma'].apply(normaliza_texto)
     df_manut_raw['nu_doc_prest_norm']   = df_manut_raw['nu_doc_prest_serv_vma'].apply(normaliza_doc)
     df_locados['nm_locador_norm']       = df_locados['nm_locador_vl'].apply(normaliza_texto)
     df_locados['nu_doc_locador_norm']   = df_locados['nu_doc_locador_vl'].apply(normaliza_doc)
     df_veiculos['nm_proprietario_vm']   = df_veiculos['nm_proprietario_vm'].apply(normaliza_texto)
     df_veiculos['nu_doc_proprietario_vm'] = df_veiculos['nu_doc_proprietario_vm'].apply(normaliza_doc)
+    
 
-
-    # 4. Padronização de Nomes Mestres (Evita duplicidade nos rankings)
+    # 4. Padronização de Nomes Mestres
     mapa_nomes_prestadores = (
         df_manut_raw.groupby('nu_doc_prest_norm')['nm_razao_prest_norm']
         .agg(lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0])
         .to_dict()
     )
-
-    # Aplicamos o nome mestre de volta à base
     df_manut_raw['nm_razao_prest_norm'] = df_manut_raw['nu_doc_prest_norm'].map(mapa_nomes_prestadores)
 
-    # ── 🔄 [Antigravity 2.0] ENGENHARIA DE ATRIBUTOS PARA VIABILIDADE REAL ──
+    # ── 🔄 ENGENHARIA DE ATRIBUTOS PARA VIABILIDADE REAL ──
     if 'cd_renavam_vm' in df_veiculos.columns and 'tp_vinculacao_vm' in df_veiculos.columns:
         mapa_vinculo_mestre = df_veiculos.set_index('cd_renavam_vm')['tp_vinculacao_vm'].to_dict()
         df_manut_raw['tp_vinculacao_vm'] = df_manut_raw['cd_renavam_vm'].map(mapa_vinculo_mestre)
     else:
         df_manut_raw['tp_vinculacao_vm'] = 'p'
 
+    df_locados['eh_aditivo']      = df_locados['nu_contrato_original'].notna()
+    df_locados['nu_contrato_pai'] = df_locados['nu_contrato_original'].fillna(
+        df_locados['nu_contrato']
+    )
+
+    # ── 🔄 [TCO] ANUALIZAÇÃO DO CUSTO CONTRATUAL UNITÁRIO ──
+    if 'custo_contratual_unit_carac_remunera' in df_locados.columns:
+        df_locados['custo_contratual_unit_carac_remunera'] = pd.to_numeric(
+            df_locados['custo_contratual_unit_carac_remunera'], errors='coerce'
+        ).fillna(0)
+
+        mapa_periodicidade = {
+            'MES': 12, 'MENSAL': 12,
+            'DIA': 365, 'DIARIO': 365, 'DIARIA': 365,
+            'ANO': 1, 'ANUAL': 1,
+            'QUINZENA': 24, 'QUINZENAL': 24,
+        }
+        df_locados['tipo_remunera_norm'] = df_locados['tipo_remunera_contrato'].apply(normaliza_texto)
+        df_locados['fator_anualizacao'] = df_locados['tipo_remunera_norm'].map(mapa_periodicidade)
+
+        df_locados['custo_anualizavel'] = df_locados['fator_anualizacao'].notna()
+        df_locados['fator_anualizacao'] = df_locados['fator_anualizacao'].fillna(0)
+
+        df_locados['custo_locacao_anual'] = (
+            df_locados['custo_contratual_unit_carac_remunera'] * df_locados['fator_anualizacao']
+        )
+
+        # 🆕 [TCO] RATEIO: custo_contratual_unit_carac_remunera representa o
+        # valor TOTAL do contrato, replicado por veículo. Dividimos pela
+        # quantidade de veículos que compartilham o mesmo nu_contrato_pai + dt_ref_vl.
+        if 'nu_contrato_pai' in df_locados.columns:
+            qtd_veiculos_contrato = (
+                df_locados.groupby(['nu_contrato_pai', 'dt_ref_vl'])['cd_renavam_vm']
+                .transform('nunique')
+            )
+            df_locados['custo_locacao_anual'] = (
+                df_locados['custo_locacao_anual'] / qtd_veiculos_contrato.replace(0, 1)
+            )
+    else:
+        df_locados['custo_locacao_anual'] = 0.0
+        df_locados['custo_anualizavel'] = False
+
     # Mapeia se o veículo locado possui manutenção inclusa no contrato
     if not df_locados.empty and 'cd_renavam_vm' in df_locados.columns:
-        # Garante tratamento para booleanos ou strings ('True', 'False', True, False)
         df_locados['manut_inclusa'] = df_locados['cd_loc_com_manutencao_vl'].astype(str).str.upper().str.strip() == 'TRUE'
-        mapa_manut_contrato = df_locados.set_index('cd_renavam_vm')['manut_inclusa'].to_dict()
-        
+
+        # ── ⚖️ [TCO] Consolida 1 contrato vigente por veículo, evitando
+        # duplicidade por aditivos/meses múltiplos ──
+        df_locados_vigente = consolida_contrato_vigente_locados(df_locados)
+
+        mapa_manut_contrato = df_locados_vigente.set_index('cd_renavam_vm')['cd_loc_com_manutencao_vl'].astype(str).str.upper().str.strip().eq('TRUE').to_dict()
+        mapa_custo_locacao  = df_locados_vigente.set_index('cd_renavam_vm')['custo_locacao_anual'].to_dict()
+        mapa_anualizavel    = df_locados_vigente.set_index('cd_renavam_vm')['custo_anualizavel'].to_dict()  # 🆕
+
         df_manut_raw['loc_manut_inclusa'] = df_manut_raw['cd_renavam_vm'].map(mapa_manut_contrato).fillna(False)
-        df_veiculos['loc_manut_inclusa'] = df_veiculos['cd_renavam_vm'].map(mapa_manut_contrato).fillna(False)
+        df_veiculos['loc_manut_inclusa']  = df_veiculos['cd_renavam_vm'].map(mapa_manut_contrato).fillna(False)
+
+        # 🆕 Custo anual do contrato de locação, por veículo (0 para frota própria)
+        df_veiculos['custo_locacao_anual'] = df_veiculos['cd_renavam_vm'].map(mapa_custo_locacao).fillna(0.0)
+        df_veiculos['custo_loc_anualizavel'] = df_veiculos['cd_renavam_vm'].map(mapa_anualizavel).fillna(True)  # 🆕
     else:
         df_manut_raw['loc_manut_inclusa'] = False
         df_veiculos['loc_manut_inclusa'] = False
+        df_veiculos['custo_locacao_anual'] = 0.0
+        df_veiculos['custo_loc_anualizavel'] = True  # 🆕
 
     return df_veiculos, df_manut_raw, df_locados
 
@@ -186,11 +235,8 @@ def enriquece_veiculos(df_veiculos, ano):
     return df_veiculos
 
 def enriquece_locados(df_locados):
-    """Identifica aditivos e deduplica por veículo/mês."""
-    df_locados['eh_aditivo']      = df_locados['nu_contrato_original'].notna()
-    df_locados['nu_contrato_pai'] = df_locados['nu_contrato_original'].fillna(
-        df_locados['nu_contrato']
-    )
+    """Deduplica por veículo/mês (eh_aditivo, nu_contrato_pai e custo_locacao_anual
+    já foram calculados em normaliza_bases)."""
     df_locados['prioridade'] = df_locados['modo_contrato'].map(
         PRIORIDADE_MODO_CONTRATO
     ).fillna(0)
@@ -201,6 +247,26 @@ def enriquece_locados(df_locados):
         .drop(columns='prioridade')
     )
     return df_locados
+
+def consolida_contrato_vigente_locados(df_locados):
+    if df_locados.empty:
+        return df_locados
+
+    df_vigente = (
+        df_locados
+        .sort_values('dt_ref_vl', ascending=False)
+        .drop_duplicates(subset=['cd_renavam_vm'], keep='first')
+        .copy()
+    )
+
+    cols_uteis = [
+        'cd_renavam_vm', 'nm_municipio', 'cd_municipio',
+        'custo_locacao_anual', 'custo_contratual_unit_carac_remunera','custo_anualizavel',  
+        'cd_loc_com_combustivel_vl', 'cd_loc_com_manutencao_vl', 'cd_loc_com_motorista_vl',
+        'nm_locador_norm', 'nu_doc_locador_norm', 'eh_aditivo'
+    ]
+    cols_presentes = [c for c in cols_uteis if c in df_vigente.columns]
+    return df_vigente[cols_presentes]
 
 def deduplica_os(df_manut_raw):
     """Deduplica a tabela de manutenções para nível de OS."""
