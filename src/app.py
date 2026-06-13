@@ -179,8 +179,7 @@ if data_loaded_successfully:
     st.markdown("Dashboard analítico interativo para acompanhamento de gastos públicos e identificação de anomalias contratuais.")
 
     # ── Mapa de Calor do Ceará (Geolocalização) ──────────────────────────────
-    if geojson_data is not None and not df_manut_filtrado.empty:
-        # Agrupar dados por codigo_municipio_ibge_6 para o mapa
+    if geojson_data is not None and not df_manut_filtrado.empty and 'codigo_municipio_ibge_6' in df_manut_filtrado.columns:
         df_mapa = (
             df_manut_filtrado.groupby('codigo_municipio_ibge_6')
             .agg(
@@ -190,17 +189,29 @@ if data_loaded_successfully:
             .reset_index()
         )
         
-        # Gerar mapa cloroplético interativo
         fig_mapa = px.choropleth(
             df_mapa,
             geojson=geojson_data,
             locations="codigo_municipio_ibge_6",
             color="total_gasto",
             color_continuous_scale="Reds",
-            labels={"total_gasto": "Total Gasto (R$)"},
+            labels={"total_gasto": "Total Gasto (R$)", "codigo_municipio_ibge_6": "Código IBGE"},
             hover_name="nm_municipio",
             hover_data={"total_gasto": ":,.2f"}
         )
+        
+        todos_ids = [f["id"] for f in geojson_data.get("features", [])]
+        camada_fundo = go.Choropleth(
+            geojson=geojson_data,
+            locations=todos_ids,
+            z=[0] * len(todos_ids),
+            colorscale=[[0, 'rgba(245, 245, 245, 0.4)'], [1, 'rgba(245, 245, 245, 0.4)']],
+            showscale=False,
+            marker=dict(line=dict(color="rgba(160, 160, 160, 0.5)", width=0.7)),
+            hoverinfo='skip'
+        )
+        
+        fig_mapa.data = (camada_fundo,) + fig_mapa.data
         
         fig_mapa.update_geos(
             fitbounds="locations",
@@ -215,6 +226,8 @@ if data_loaded_successfully:
         st.plotly_chart(fig_mapa, use_container_width=True)
     elif geojson_data is None:
         st.warning("Não foi possível carregar o mapa: GeoJSON do Ceará indisponível.")
+    else:
+        st.warning("⚠️ O mapa de calor está indisponível porque os dados do IBGE não puderam ser carregados via API do TCE-CE.")
 
     # ── KPIs principais (Indicadores Rápidos) ─────────────────────────────────
     gasto_total = df_manut_filtrado['vl_total_servicos_vma'].sum()

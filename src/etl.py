@@ -279,7 +279,7 @@ def carrega_de_para_ibge():
     import requests
     url = "https://api-dados-abertos.tce.ce.gov.br/sim/municipios"
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, timeout=15, verify=False)
         response.raise_for_status()
         data = response.json()
         
