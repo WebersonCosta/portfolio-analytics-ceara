@@ -70,13 +70,13 @@ Após a consolidação do pipeline de TCO, os resultados empíricos demonstraram
  
 ![Comparativo de Custo Médio de Manutenção por Tipo de Vínculo](img/comparativo_custo_medio_c.png)
  
-O cruzamento refinado de dados revelou um contraste drástico na eficiência operacional e financeira dos modelos de gestão avaliados no Estado do Ceará:
+O cruzamento de dados contratuais e financeiros estabeleceu o real cenário de custo de disponibilidade de frota no Estado do Ceará no ano de 2025:
  
-- **Frota Própria:** O custo médio anual de manutenção atingiu a marca de **R$ 17.093,25** por veículo único ativo e em operação. 
-- **Frota Locada (sem cobertura de oficina):** O subgrupo de veículos alugados onde o município assumiu diretamente as despesas de manutenção apresentou um custo médio anual de apenas **R$ 618,83** por unidade.
-- **O Impacto da Discrepância:** Esta diferença representa uma economia interna de **96,3%** no custo de oficina por veículo individual quando se adota o modelo locado. 
+- **Frota Própria:** Registrou um TCO médio anual de **R$ 17.093,25** por veículo único (composto exclusivamente por gastos operacionais de oficina). 
+- **Frota Locada (TCO Consolidado):** Atingiu um custo médio de **R$ 52.889,84** por veículo único ativo, composto por **R$ 52.271,01** de taxa de aluguel anualizada e **R$ 618,83** de despesas residuais em contratos sem cobertura.
+- **Diferença Estratégica:** Em termos estritamente financeiros de curto prazo, o modelo de frota própria gerou um custo **R$ 35.796,59 menor por ano por veículo** em relação à terceirização contratada. 
 
-Os dados demonstram que a terceirização, mesmo sob contratos sem cobertura de manutenção corretiva e preventiva pela locadora, mitiga drasticamente o impacto financeiro direto nas contas municipais. O fator preponderante para esse comportamento é a idade média e obsolescência da frota própria, que gera quebras crônicas e severas em peças de alto valor, enquanto a frota locada usufrui de ciclos constantes de renovação e menor desgaste mecânico acumulado.
+O indicador de suporte à decisão revela que a adoção da frota locada deve ser pautada em critérios de ganho de eficiência operacional (disponibilidade contínua de frota nova, menor tempo de parada) e segurança do servidor, e não sob a premissa de economia direta de recursos financeiros.
  
 ### Anomalias e Score de Suspeição (Isolation Forest + IQR + Z-Score)
  
