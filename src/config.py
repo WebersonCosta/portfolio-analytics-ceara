@@ -44,3 +44,16 @@ FINALIDADES_SUSPEITAS = [
     'Pátio (veículos inservíveis ou irrecuperáveis – sucata)',
     'Garagem (veículos ociosos)'
 ]
+
+MAPEAMENTO_CATEGORIAS = {
+    'AUTOMOVEL': 'Leve (Administrativo)',
+    'CAMINHONETE': 'Leve (Administrativo)',
+    'UTILITARIO': 'Leve (Administrativo)',
+    'MOTOCICLETA': 'Leve (Administrativo)',
+    'QUADRICICLO': 'Leve (Administrativo)',
+    'CAMINHAO': 'Pesado (Operacional/Obras)',
+    'TRATOR': 'Pesado (Operacional/Obras)',
+    'REBOQUE': 'Pesado (Operacional/Obras)',
+    'ONIBUS / MICRO-ONIBUS': 'Pesado (Transporte/Civil)',
+    'OUTROS': 'Outros/Não Identificado'
+}

@@ -234,6 +234,32 @@ def enriquece_veiculos(df_veiculos, ano):
     
     return df_veiculos
 
+def mapear_tipo_veiculo(df_veiculos):
+    """
+    Normaliza as descrições textuais de tipos de veículos fornecidas pelo TCE-CE
+    e aplica as regras de macrocategorias macroeconômicas.
+    """
+    if 'tp_veiculo' in df_veiculos.columns: # Substitua pelo nome exato da coluna da base
+        # 1. Sanitização padrão para garantir o casamento com o dicionário
+        df_veiculos['tipo_veiculo_norm'] = (
+            df_veiculos['tp_veiculo']
+            .astype(str)
+            .str.strip()
+            .str.upper()
+        )
+        
+        # 2. Aplicação do mapeamento mestre de categorias
+        df_veiculos['macrocategoria_veiculo'] = (
+            df_veiculos['tipo_veiculo_norm']
+            .map(MAPEAMENTO_CATEGORIAS)
+            .fillna('Outros/Não Identificado')
+        )
+    else:
+        df_veiculos['tipo_veiculo_norm'] = 'NAO IDENTIFICADO'
+        df_veiculos['macrocategoria_veiculo'] = 'Outros/Não Identificado'
+        
+    return df_veiculos
+
 def enriquece_locados(df_locados):
     """Deduplica por veículo/mês (eh_aditivo, nu_contrato_pai e custo_locacao_anual
     já foram calculados em normaliza_bases)."""
