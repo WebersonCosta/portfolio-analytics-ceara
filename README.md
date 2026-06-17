@@ -18,8 +18,6 @@
 
 Este projeto foi desenvolvido como requisito avaliativo para a disciplina de Tópicos de Big Data em Python por:
 
-- **Guilherme Almeida** — *Systems Developer & Bodybuilding Athlete* — [GitHub](https://github.com/gwilhermealm)
-- **Isaac Miranda** — *Systems Developer & Bodybuilding Athlete* — [GitHub](https://github.com/isaacmorais41-cyber)
 - **Weberson Costa** — *Systems Developer & Bodybuilding Athlete* — [GitHub](https://github.com/WebersonCosta)
  
 ---
