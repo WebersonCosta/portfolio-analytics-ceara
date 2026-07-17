@@ -54,6 +54,6 @@ MAPEAMENTO_CATEGORIAS = {
     'CAMINHAO': 'Pesado (Operacional/Obras)',
     'TRATOR': 'Pesado (Operacional/Obras)',
     'REBOQUE': 'Pesado (Operacional/Obras)',
-    'ONIBUS / MICRO-ONIBUS': 'Pesado (Transporte/Civil)',
+    'ONIBUS/MICRO-ONIBUS': 'Pesado (Transporte/Civil)',
     'OUTROS': 'Outros/Não Identificado'
 }

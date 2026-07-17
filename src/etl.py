@@ -13,6 +13,7 @@ from src.config import (
     DTYPE_BASE, 
 
     PRIORIDADE_MODO_CONTRATO, 
+    MAPEAMENTO_CATEGORIAS
      
 )
 
@@ -239,14 +240,9 @@ def mapear_tipo_veiculo(df_veiculos):
     Normaliza as descrições textuais de tipos de veículos fornecidas pelo TCE-CE
     e aplica as regras de macrocategorias macroeconômicas.
     """
-    if 'tp_veiculo' in df_veiculos.columns: # Substitua pelo nome exato da coluna da base
-        # 1. Sanitização padrão para garantir o casamento com o dicionário
-        df_veiculos['tipo_veiculo_norm'] = (
-            df_veiculos['tp_veiculo']
-            .astype(str)
-            .str.strip()
-            .str.upper()
-        )
+    if 'tp_veiculo' in df_veiculos.columns:
+        # 1. Reutiliza a sua função mestre de normalização (Caixa alta + sem acentos)
+        df_veiculos['tipo_veiculo_norm'] = df_veiculos['tp_veiculo'].apply(normaliza_texto)
         
         # 2. Aplicação do mapeamento mestre de categorias
         df_veiculos['macrocategoria_veiculo'] = (
