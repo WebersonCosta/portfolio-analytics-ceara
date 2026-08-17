@@ -228,10 +228,10 @@ Registra-se como limitação do atual estágio do projeto a ausência de uma que
 
 ---
  
-## 👥 Guia de Replicação para a Equipe (Provisório)
+## 👥 Guia de Replicação (Provisório)
  
 > [!NOTE]
-> **Aviso para a equipe:** Este guia de replicação é temporário e será removido na entrega final do repositório.
+> **Aviso:** Este guia de replicação é temporário e será removido.
  
 ### Pré-requisitos
  
@@ -300,12 +300,6 @@ O Streamlit abrirá automaticamente no navegador padrão em `http://localhost:85
 | `streamlit` | Framework de dashboard interativo |
 | `plotly` | Visualizações interativas (mapas, boxplots, scatter, barras) |
 | `requests` | Consumo das APIs governamentais (TCE-CE) |
- 
----
- 
-## 📄 Licença
- 
-Distribuído sob a licença MIT. Consulte o arquivo `LICENSE` para mais informações.
  
 ---
  
